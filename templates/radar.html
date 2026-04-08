@@ -17,13 +17,7 @@
   'ae': ['🇦🇪 阿联酋', 'uae', 'dubai'],
 } %}
 
-{% set user_dests = [] %}
-{% if profile and profile.destinations %}
-  {% set raw = profile.destinations | replace('["','') | replace('"]','') | replace('"','') %}
-  {% for d in raw.split(',') %}
-    {% if d.strip() %}{% set _ = user_dests.append(d.strip()) %}{% endif %}
-  {% endfor %}
-{% endif %}
+{% set user_dests = destinations or [] %}
 
 <div class="radar-page">
 
@@ -85,29 +79,53 @@
   </div>
   {% endif %}
 
-  {# ── 全部地区 ── #}
+  {# ── 目的地动态（按用户目的地过滤，无选择则全部显示） ── #}
   <div class="radar-section">
-    <div class="section-label">全部地区动态</div>
+    <div class="section-label">
+      {% if user_dests and 'unknown' not in user_dests %}各目的地动态{% else %}全部地区动态{% endif %}
+    </div>
     <hr class="section-rule">
     <div class="radar-columns">
       {% for region, items in raw_data.by_region.items() %}
       {% if items %}
-      <div class="radar-col">
-        <div class="radar-col-header">{{ region }}</div>
-        {% for item in items[:4] %}
-        <div class="radar-item">
-          {% if item.link %}
-          <a href="{{ item.link }}" target="_blank" class="radar-item-title">{{ item.title[:90] }}{% if item.title|length > 90 %}…{% endif %}</a>
-          {% else %}
-          <div class="radar-item-title-plain">{{ item.title[:90] }}</div>
-          {% endif %}
-          <div class="radar-item-meta">{{ item.source }}</div>
+        {# 判断该地区是否匹配用户目的地 #}
+        {% set region_lower = region | lower %}
+        {% set ns2 = namespace(show=false) %}
+        {% if not user_dests or 'unknown' in user_dests %}
+          {% set ns2.show = true %}
+        {% else %}
+          {% for dest in user_dests %}
+            {% if DEST_REGION.get(dest) %}
+              {% for kw in DEST_REGION[dest] %}
+                {% if kw in region_lower %}{% set ns2.show = true %}{% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if ns2.show %}
+        <div class="radar-col">
+          <div class="radar-col-header">{{ region }}</div>
+          {% for item in items[:4] %}
+          <div class="radar-item">
+            {% if item.link %}
+            <a href="{{ item.link }}" target="_blank" class="radar-item-title">{{ item.title[:90] }}{% if item.title|length > 90 %}…{% endif %}</a>
+            {% else %}
+            <div class="radar-item-title-plain">{{ item.title[:90] }}</div>
+            {% endif %}
+            <div class="radar-item-meta">{{ item.source }}</div>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
-      </div>
+        {% endif %}
       {% endif %}
       {% endfor %}
     </div>
+    {% if user_dests and 'unknown' not in user_dests %}
+    <div style="margin-top:16px;font-size:12px;color:var(--ink-faint);font-family:-apple-system,sans-serif">
+      仅显示与你目的地（{{ user_dests | join('、') }}）相关的地区。
+      <a href="{{ url_for('onboarding') }}" style="color:var(--ink-muted);text-decoration:underline">修改目的地</a>
+    </div>
+    {% endif %}
   </div>
 
   {% else %}

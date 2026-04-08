@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% block title %}{{ country.emoji }} {{ country.name }} 移民档案 · 星路{% endblock %}
+{% block content %}
+
+<div class="country-page">
+
+  {# ── 面包屑 ── #}
+  <div class="breadcrumb">
+    <a href="{{ url_for('map_page') }}" class="btn-text" style="font-size:12px">← 返回地图</a>
+  </div>
+
+  {# ── 头部 ── #}
+  <div class="country-header">
+    <div class="country-flag">{{ country.emoji }}</div>
+    <div>
+      <h1 class="country-title">{{ country.name }}</h1>
+      <div class="country-tagline">{{ country.tagline }}</div>
+      <div class="country-authority">
+        <span style="color:var(--ink-faint)">官方机构：</span>
+        <a href="{{ country.authority_url }}" target="_blank" class="authority-link">
+          {{ country.authority }} ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# ── 主要路线 ── #}
+  <div class="country-section">
+    <div class="section-label">主要移民路线</div>
+    <hr class="section-rule">
+    <div class="route-list">
+      {% for route in country.main_routes %}
+      <div class="route-row">
+        <div class="route-row-left">
+          <div class="route-row-name">{{ route.name }}</div>
+          <div class="route-row-desc">{{ route.desc }}</div>
+        </div>
+        <div class="route-row-right">
+          <span class="route-type-tag type-{{ route.type }}">
+            {% if route.type == 'skilled' %}💼 技术
+            {% elif route.type == 'nomad' %}💻 游民
+            {% elif route.type == 'family' %}👨‍👩‍👧 家庭
+            {% elif route.type == 'investment' %}🌱 投资
+            {% elif route.type == 'student' %}🎓 学生
+            {% else %}其他{% endif %}
+          </span>
+          <div class="route-row-months">约 {{ route.months }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── 关键知识点 ── #}
+  <div class="country-section">
+    <div class="section-label">关键知识</div>
+    <hr class="section-rule">
+    <ul class="key-facts-list">
+      {% for fact in country.key_facts %}
+      <li class="key-fact">{{ fact }}</li>
+      {% endfor %}
+    </ul>
+    {% if country.processing_note %}
+    <div class="processing-note">
+      <span style="font-weight:600;color:var(--ink-muted)">最新动态：</span>
+      {{ country.processing_note }}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── 最新雷达资讯 ── #}
+  {% if recent_news %}
+  <div class="country-section">
+    <div class="section-label">最新资讯（来自雷达）</div>
+    <hr class="section-rule">
+    {% for item in recent_news %}
+    <div class="news-row">
+      {% if item.link %}
+      <a href="{{ item.link }}" target="_blank" class="news-title">{{ item.title[:100] }}</a>
+      {% else %}
+      <div class="news-title-plain">{{ item.title[:100] }}</div>
+      {% endif %}
+      <div class="news-meta">{{ item.source }}{% if item.pub %} · {{ item.pub[:10] }}{% endif %}</div>
+    </div>
+    {% endfor %}
+    <div style="margin-top:12px">
+      <a href="{{ url_for('radar_page') }}" class="btn-text" style="font-size:12px">查看完整资讯雷达 →</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="country-section">
+    <div class="section-label">最新资讯</div>
+    <hr class="section-rule">
+    <p class="empty-note">暂无雷达资讯。<a href="{{ url_for('radar_page') }}">运行一次雷达</a>获取最新政策动态。</p>
+  </div>
+  {% endif %}
+
+  {# ── 官方链接 ── #}
+  <div class="country-section">
+    <div class="section-label">官方资源</div>
+    <hr class="section-rule">
+    <a href="{{ country.authority_url }}" target="_blank" class="authority-btn">
+      前往 {{ country.authority }} ↗
+    </a>
+  </div>
+
+</div>
+
+<style>
+.country-page { max-width: 720px; margin: 0 auto; padding: 24px 24px 60px; }
+
+.breadcrumb { margin-bottom: 24px; }
+
+.country-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 28px;
+  margin-bottom: 32px;
+  border-bottom: 2px solid var(--rule);
+}
+.country-flag {
+  font-size: 52px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.country-title {
+  font-family: Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.country-tagline {
+  font-family: -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.country-authority {
+  font-family: -apple-system, sans-serif;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.authority-link {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.authority-link:hover { color: var(--ink); }
+
+.country-section { margin-bottom: 36px; }
+
+.route-list { display: flex; flex-direction: column; gap: 0; }
+.route-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule-light);
+  gap: 16px;
+}
+.route-row-left { flex: 1; min-width: 0; }
+.route-row-name {
+  font-family: -apple-system, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.route-row-desc {
+  font-family: -apple-system, sans-serif;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.route-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.route-type-tag {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.type-skilled    { background: rgba(0,120,200,.1);  color: #0050a0; }
+.type-nomad      { background: rgba(0,160,80,.1);   color: #005a30; }
+.type-family     { background: rgba(160,80,0,.1);   color: #7a3000; }
+.type-investment { background: rgba(100,60,160,.1); color: #4a1a80; }
+.type-student    { background: rgba(200,140,0,.1);  color: #7a5000; }
+.route-row-months {
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.key-facts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.key-fact {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+  padding: 10px 0 10px 16px;
+  border-bottom: 1px solid var(--rule-light);
+  position: relative;
+}
+.key-fact::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--ink-muted);
+  font-weight: 700;
+}
+.processing-note {
+  font-family: -apple-system, sans-serif;
+  font-size: 12px;
+  color: var(--ink-muted);
+  border-left: 2px solid var(--rule);
+  padding: 8px 12px;
+  margin-top: 16px;
+  background: var(--paper-2);
+  line-height: 1.6;
+}
+
+.news-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+.news-title {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+  display: block;
+}
+.news-title:hover { text-decoration: underline; }
+.news-title-plain {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.news-meta {
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 3px;
+}
+
+.authority-btn {
+  display: inline-block;
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  padding: 8px 16px;
+  text-decoration: none;
+  transition: border-color .15s, background .15s;
+}
+.authority-btn:hover {
+  border-color: var(--ink-muted);
+  background: var(--paper-2);
+}
+
+.empty-note {
+  font-size: 13px;
+  color: var(--ink-faint);
+  font-family: -apple-system, sans-serif;
+}
+.empty-note a { color: var(--ink-muted); text-decoration: underline; }
+</style>
+
+{% endblock %}

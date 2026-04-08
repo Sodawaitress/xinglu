@@ -321,6 +321,7 @@ def set_stage():
 @login_required
 def radar_page():
     profile = db.get_profile(session["user_id"])
+    destinations = json.loads(profile["destinations"] or "[]") if profile else []
     latest  = db.get_latest_report()
     reports = db.get_all_reports()
     raw_data = None
@@ -331,6 +332,7 @@ def radar_page():
             pass
     return render_template("radar.html",
                            profile=profile,
+                           destinations=destinations,
                            latest=latest,
                            raw_data=raw_data,
                            reports=reports)
@@ -622,6 +624,284 @@ def admin_reset_user(uid):
         conn.execute(_t("DELETE FROM user_task_progress WHERE user_id=:uid"), {"uid": uid})
         conn.execute(_t("DELETE FROM world_events WHERE entity_id=:uid AND entity_type='user'"), {"uid": str(uid)})
     return redirect(url_for("admin_dashboard"))
+
+
+# ── Country Profiles ─────────────────────────────────
+COUNTRY_PROFILES = {
+    "nz": {
+        "name": "新西兰", "emoji": "🇳🇿",
+        "authority": "移民局 INZ (Immigration New Zealand)",
+        "authority_url": "https://www.immigration.govt.nz",
+        "tagline": "绿色移民，积分制，雇主签证快速通道",
+        "main_routes": [
+            {"name": "技术移民（SMC）", "type": "skilled", "desc": "积分制，EOI→邀请→申请", "months": "12–18"},
+            {"name": "雇主担保（AEWV）", "type": "skilled", "desc": "雇主认证后可递签", "months": "3–6"},
+            {"name": "绿色清单（Green List）", "type": "skilled", "desc": "特定职业直接获批", "months": "3–8"},
+            {"name": "数字游民签证", "type": "nomad", "desc": "海外收入证明，最长9个月", "months": "1–2"},
+            {"name": "家庭类（配偶/伴侣）", "type": "family", "desc": "与公民/永居伴侣", "months": "6–12"},
+        ],
+        "key_facts": [
+            "永居（Resident Visa）→ 5年后可申请公民",
+            "EOI 积分池定期开放抽签，需关注 EOI 公告",
+            "Green List 职业直接落地无需积分，含护士、教师、工程师",
+            "AEW 雇主需官网认证，求职时确认雇主资质",
+        ],
+        "processing_note": "SMC EOI 积分达 160 分通常可获邀，2024年门槛有所上升",
+        "region_key": "🇳🇿 新西兰",
+    },
+    "au": {
+        "name": "澳大利亚", "emoji": "🇦🇺",
+        "authority": "内政部 DHA (Department of Home Affairs)",
+        "authority_url": "https://immi.homeaffairs.gov.au",
+        "tagline": "多通道移民大国，积分制+州担保",
+        "main_routes": [
+            {"name": "189 独立技术移民", "type": "skilled", "desc": "积分制，无需担保", "months": "12–24"},
+            {"name": "190 州担保技术移民", "type": "skilled", "desc": "州政府担保+5分加成", "months": "9–18"},
+            {"name": "491 区域担保技术移民", "type": "skilled", "desc": "偏远地区州担保", "months": "9–15"},
+            {"name": "482 临时技术移民", "type": "skilled", "desc": "雇主担保工签，可续居", "months": "2–4"},
+            {"name": "数字游民（非官方）", "type": "nomad", "desc": "旅游签+远程办公，无专项签证", "months": "—"},
+        ],
+        "key_facts": [
+            "EOI 通过 SkillSelect 系统提交，积分达线等待邀请",
+            "189分数线历史低点约65分，近年涨至80+",
+            "职业需在 MLTSSL / STSOL 清单内",
+            "技能评估（RPL/TRA等）通常需 2–6 个月，提前准备",
+        ],
+        "processing_note": "2024 年引入 SIQ（Skills in Demand）签替换部分 482 类别",
+        "region_key": "🇦🇺 澳大利亚",
+    },
+    "ca": {
+        "name": "加拿大", "emoji": "🇨🇦",
+        "authority": "移民部 IRCC (Immigration, Refugees and Citizenship Canada)",
+        "authority_url": "https://www.canada.ca/en/immigration-refugees-citizenship.html",
+        "tagline": "Express Entry + 省提名，全球移民首选",
+        "main_routes": [
+            {"name": "Federal Skilled Worker (FSW)", "type": "skilled", "desc": "Express Entry主力流", "months": "6–12"},
+            {"name": "Canadian Experience Class (CEC)", "type": "skilled", "desc": "在加工作经验", "months": "4–8"},
+            {"name": "省提名计划 (PNP)", "type": "skilled", "desc": "各省独立配额", "months": "12–24"},
+            {"name": "Start-up Visa", "type": "investment", "desc": "创业签，需指定机构支持", "months": "18–36"},
+        ],
+        "key_facts": [
+            "CRS 综合评分系统，定期从池中抽取邀请（Draw）",
+            "FSW 最低 CRS 约 480–520 分（波动较大）",
+            "PNP 额外 600 分加成，中签率极高",
+            "LMIA 雇主劳工市场影响评估可大幅提升评分",
+        ],
+        "processing_note": "2024 年 IRCC 宣布新移民配额调整，总量约 485,000/年",
+        "region_key": "🇨🇦 加拿大",
+    },
+    "uk": {
+        "name": "英国", "emoji": "🇬🇧",
+        "authority": "内政部 / UK Visas and Immigration (UKVI)",
+        "authority_url": "https://www.gov.uk/government/organisations/uk-visas-and-immigration",
+        "tagline": "积分制工签，高技能人才优先",
+        "main_routes": [
+            {"name": "Skilled Worker Visa", "type": "skilled", "desc": "雇主担保+积分达70分", "months": "3–8"},
+            {"name": "High Potential Individual (HPI)", "type": "skilled", "desc": "顶尖大学毕业生2年免担保工签", "months": "2–4"},
+            {"name": "Global Talent Visa", "type": "skilled", "desc": "顶级人才，需机构背书", "months": "3–6"},
+            {"name": "Graduate Visa", "type": "student", "desc": "英国毕业后2年工签", "months": "1–2"},
+            {"name": "Family Visa", "type": "family", "desc": "配偶/伴侣/父母", "months": "8–12"},
+        ],
+        "key_facts": [
+            "ILR（无限期居留）需合法居英 5 年",
+            "2024年最低工资门槛大幅提升至 38,700 英镑/年",
+            "Health Surcharge 每年约 1,035 英镑",
+            "英语要求 B1 级别（CEFR）",
+        ],
+        "processing_note": "2024年起配偶签收入门槛分阶段提升，最终至 38,700 英镑",
+        "region_key": "🇬🇧 英国",
+    },
+    "us": {
+        "name": "美国", "emoji": "🇺🇸",
+        "authority": "移民局 USCIS + 国务院 DOS",
+        "authority_url": "https://www.uscis.gov",
+        "tagline": "绿卡配额制，H-1B抽签，路长但值",
+        "main_routes": [
+            {"name": "H-1B 工作签证", "type": "skilled", "desc": "雇主担保+每年4月抽签", "months": "6–12（抽中后）"},
+            {"name": "EB-1A/EB-1B 杰出人才", "type": "skilled", "desc": "无需雇主，绿卡优先", "months": "12–36"},
+            {"name": "EB-2 NIW 国家利益豁免", "type": "skilled", "desc": "自请愿，无雇主担保", "months": "24–48"},
+            {"name": "O-1 杰出能力签证", "type": "skilled", "desc": "文艺/体育/科学杰出人才", "months": "3–6"},
+            {"name": "F-1 学生签证", "type": "student", "desc": "留学+OPT工作1–3年", "months": "1–3"},
+        ],
+        "key_facts": [
+            "H-1B 每年 4 月电子抽签，中签率约 25%（近年下降）",
+            "中国/印度出生绿卡优先级积压严重，等待时间可达 10–30 年",
+            "NIW 申请无配额限制，但审理时间不稳定",
+            "2025年 H-1B 规则更新，选择性注册期间有变化",
+        ],
+        "processing_note": "EB 类别中国出生等候时间极长，建议优先考虑 O-1 或 NIW",
+        "region_key": "🇺🇸 美国",
+    },
+    "pt": {
+        "name": "葡萄牙", "emoji": "🇵🇹",
+        "authority": "移民与边境局 AIMA (ex-SEF)",
+        "authority_url": "https://www.aima.gov.pt",
+        "tagline": "D7被动收入签证，欧洲落脚首选",
+        "main_routes": [
+            {"name": "D7 被动收入签证", "type": "nomad", "desc": "月收入≥760€，家庭可降", "months": "2–4"},
+            {"name": "D8 数字游民签证", "type": "nomad", "desc": "远程收入≥3,040€/月", "months": "2–4"},
+            {"name": "黄金签证（正在收缩）", "type": "investment", "desc": "投资类，2023年大幅限制", "months": "12–24"},
+            {"name": "Tech Visa", "type": "skilled", "desc": "科技行业雇主担保", "months": "2–4"},
+        ],
+        "key_facts": [
+            "D7/D8 需在葡持有 NHR 税务身份，享受 10 年税收优惠（已更新为 IFICI）",
+            "申根区自由行，5年可申请永居",
+            "2024年 AIMA 更名替代 SEF，预约积压情况有改善",
+            "里斯本/波尔图房价上涨，偏远地区更具性价比",
+        ],
+        "processing_note": "D7 签证在使领馆办理，落地后 4 个月内在 AIMA 转为居留许可",
+        "region_key": "🇵🇹 葡萄牙",
+    },
+    "de": {
+        "name": "德国", "emoji": "🇩🇪",
+        "authority": "联邦移民与难民局 BAMF",
+        "authority_url": "https://www.bamf.de",
+        "tagline": "机遇卡（Chancenkarte）开放，技术移民加速",
+        "main_routes": [
+            {"name": "Chancenkarte 机遇卡", "type": "skilled", "desc": "积分制找工签证，1年有效", "months": "2–4"},
+            {"name": "Fachkräftezuwanderungsgesetz 技术移民法", "type": "skilled", "desc": "雇主担保工签", "months": "3–6"},
+            {"name": "EU 蓝卡 (Blue Card EU)", "type": "skilled", "desc": "高学历+高薪，快速永居", "months": "2–4"},
+            {"name": "Niederlassungserlaubnis 定居许可", "type": "skilled", "desc": "永居，通常需 2–5 年合法居德", "months": "—"},
+        ],
+        "key_facts": [
+            "机遇卡 2024 年正式实施，持有者可入德找工作",
+            "EU 蓝卡月薪门槛约 3,909 EUR（部分职业更低）",
+            "德语 B1 可加分，不强制要求但大幅提升机会",
+            "获蓝卡后 21 个月（B1 德语）或 33 个月可申永居",
+        ],
+        "processing_note": "Chancenkarte 需至少 6 分（学历/经验/语言/年龄积分），入德后找工作3个月内需提交合同",
+        "region_key": "🇩🇪 德国",
+    },
+    "jp": {
+        "name": "日本", "emoji": "🇯🇵",
+        "authority": "出入国在留管理厅 (Immigration Services Agency)",
+        "authority_url": "https://www.isa.go.jp",
+        "tagline": "高度人才积分制，特定技能扩大开放",
+        "main_routes": [
+            {"name": "高度専門職（积分制）", "type": "skilled", "desc": "积分≥70分，快速永居通道", "months": "1–3"},
+            {"name": "特定技能 1 号 / 2 号", "type": "skilled", "desc": "特定行业，2号可永居", "months": "3–6"},
+            {"name": "技术・人文知识・国际业务", "type": "skilled", "desc": "主流工签类别", "months": "1–3"},
+            {"name": "数字游民（J-Find）", "type": "nomad", "desc": "顶尖大学毕业，6个月找工签", "months": "1–2"},
+            {"name": "配偶签证", "type": "family", "desc": "与日本公民/永居结婚", "months": "1–3"},
+        ],
+        "key_facts": [
+            "高度人才 80 分以上可 1 年后申请永居，70 分为 3 年",
+            "特定技能 2 号 2024 年新增 11 个行业，含制造、建筑",
+            "10 年合法居住一般可申请永居",
+            "日语 N2 以上在积分系统中大幅加分",
+        ],
+        "processing_note": "2024年新设 J-Find 签证吸引海外人才来日，仅限特定大学毕业",
+        "region_key": "🇯🇵 日本",
+    },
+    "th": {
+        "name": "泰国", "emoji": "🇹🇭",
+        "authority": "移民局 (Immigration Bureau of Thailand)",
+        "authority_url": "https://www.immigration.go.th",
+        "tagline": "LTR 长期居留签证，数字游民热门目的地",
+        "main_routes": [
+            {"name": "LTR 长期居留签证 (10年)", "type": "investment", "desc": "富裕人士/被动收入/远程工作者", "months": "1–3"},
+            {"name": "Thailand Privilege (旧 Elite)", "type": "investment", "desc": "付费会员制，5–20年居留", "months": "1–2"},
+            {"name": "退休签证 (Non-O-A)", "type": "investment", "desc": "50岁以上，存款80万泰铢", "months": "1–2"},
+            {"name": "SMART Visa", "type": "skilled", "desc": "科技/高技能人才，4年", "months": "1–3"},
+            {"name": "旅游签多次往返", "type": "nomad", "desc": "非正式数字游民方式", "months": "—"},
+        ],
+        "key_facts": [
+            "LTR 远程工作者需海外收入≥80,000 USD/年，持有至少 1 年雇主合同",
+            "Thailand Privilege 会籍费 60–2,500 万泰铢（约 1.6–70 万 USD）",
+            "泰国无永居路径（永久居留 PR 极难获批）",
+            "2024 年推出 90 天远程工作签证试点",
+        ],
+        "processing_note": "LTR 签证通过 BOI 网站申请，审批效率较传统移民局好",
+        "region_key": "🇹🇭 泰国",
+    },
+    "ae": {
+        "name": "阿联酋", "emoji": "🇦🇪",
+        "authority": "联邦身份与公民局 ICP + GDRFA 迪拜",
+        "authority_url": "https://icp.gov.ae",
+        "tagline": "黄金签证10年居留，免税天堂",
+        "main_routes": [
+            {"name": "黄金签证 (10年)", "type": "investment", "desc": "房产≥200万迪拉姆/杰出人才/企业家", "months": "1–2"},
+            {"name": "绿卡签证 (5年)", "type": "skilled", "desc": "技术工人/自由职业者", "months": "1–2"},
+            {"name": "雇主工签", "type": "skilled", "desc": "公司担保，标准工作签", "months": "1–2"},
+            {"name": "远程工作签证 (1年)", "type": "nomad", "desc": "海外雇主收入证明，可续签", "months": "1–2"},
+        ],
+        "key_facts": [
+            "阿联酋无个人所得税",
+            "黄金签证 2022 年扩展：博士/科学家/文化体育人才可申请",
+            "迪拜 vs 阿布扎比：生活方式差异明显，迪拜更国际化",
+            "无国籍转换路径，签证≠永居，长期规划需注意",
+        ],
+        "processing_note": "黄金签证房产路径：需持有完工房产，off-plan 不满足条件",
+        "region_key": "🇦🇪 阿联酋",
+    },
+    "sg": {
+        "name": "新加坡", "emoji": "🇸🇬",
+        "authority": "移民与关卡局 ICA + 人力部 MOM",
+        "authority_url": "https://www.ica.gov.sg",
+        "tagline": "EP工作准证，亚洲金融中心，难但有路",
+        "main_routes": [
+            {"name": "Employment Pass (EP)", "type": "skilled", "desc": "最低月薪 5,000 SGD，雇主担保", "months": "3–8"},
+            {"name": "ONE Pass (杰出人才)", "type": "skilled", "desc": "月薪≥30,000 SGD 或顶尖企业高管", "months": "2–4"},
+            {"name": "Tech.Pass", "type": "skilled", "desc": "科技行业高薪人才，无需本地雇主", "months": "2–3"},
+            {"name": "永久居民 (PR)", "type": "skilled", "desc": "合法居新 2 年以上可申请，竞争激烈", "months": "12–24"},
+        ],
+        "key_facts": [
+            "PR 申请无明确标准，政府自由裁量，通过率约 30–40%",
+            "新加坡公民资格需持有 PR 2 年以上",
+            "2023 年大幅提升 EP 门槛，金融业最低月薪 5,500 SGD",
+            "CECA 协议影响已收紧，印度籍申请人审查更严",
+        ],
+        "processing_note": "EP 被拒一般无正式原因，可重新申请但需调整薪资/职位",
+        "region_key": "🇸🇬 新加坡",
+    },
+    "my": {
+        "name": "马来西亚", "emoji": "🇲🇾",
+        "authority": "移民厅 Jabatan Imigresen Malaysia",
+        "authority_url": "https://www.imi.gov.my",
+        "tagline": "MM2H 第二家园，低成本高生活质量",
+        "main_routes": [
+            {"name": "MM2H 第二家园计划", "type": "investment", "desc": "定期存款+收入要求，10年多次入境签", "months": "3–6"},
+            {"name": "DE Rantau 数字游民", "type": "nomad", "desc": "月收入≥24,000 MYR，12个月可续签", "months": "1–3"},
+            {"name": "工作准证（Employment Pass）", "type": "skilled", "desc": "雇主担保，月薪≥5,000 MYR", "months": "1–3"},
+        ],
+        "key_facts": [
+            "MM2H 2021 年收紧：定期存款 150–200 万 MYR，年收入 4 万 MYR",
+            "生活成本约新加坡 30–40%",
+            "无永居→公民路径（华裔特殊情况除外）",
+            "DE Rantau 在 MDEC 申请，吸引科技自由职业者",
+        ],
+        "processing_note": "MM2H 2024年再度修订，建议通过认证代理申请以提高通过率",
+        "region_key": None,
+    },
+}
+
+
+@app.route("/country/<code>")
+@login_required
+def country_page(code):
+    code = code.lower()
+    profile_data = COUNTRY_PROFILES.get(code)
+    if not profile_data:
+        flash("暂无该国家档案", "error")
+        return redirect(url_for("map_page"))
+    profile = db.get_profile(session["user_id"])
+    # 从雷达数据提取该国家的最新新闻
+    latest = db.get_latest_report()
+    recent_news = []
+    if latest and latest.get("raw_json"):
+        try:
+            raw = json.loads(latest["raw_json"])
+            region_key = profile_data.get("region_key")
+            if region_key:
+                items = raw.get("by_region", {}).get(region_key, [])
+                recent_news = items[:5]
+        except Exception:
+            pass
+    return render_template("country.html",
+                           code=code,
+                           country=profile_data,
+                           profile=profile,
+                           recent_news=recent_news)
 
 
 # ── Main ───────────────────────────────────────────────

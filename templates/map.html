@@ -89,10 +89,30 @@
     </div>
   </div>
 
+  {# ── 目的地快速入口 ── #}
+  {% set dests_clean = [] %}
+  {% for d in destinations %}{% if d not in ['other','unknown'] %}{% set _ = dests_clean.append(d) %}{% endif %}{% endfor %}
+  {% if dests_clean %}
+  <div class="dest-shortcuts">
+    <div class="dest-shortcuts-label">你的目的地</div>
+    <div class="dest-shortcuts-row">
+      {% set DEST_DISPLAY = {'nz':'🇳🇿 新西兰','au':'🇦🇺 澳大利亚','ca':'🇨🇦 加拿大','uk':'🇬🇧 英国','us':'🇺🇸 美国','pt':'🇵🇹 葡萄牙','de':'🇩🇪 德国','jp':'🇯🇵 日本','th':'🇹🇭 泰国','ae':'🇦🇪 阿联酋','sg':'🇸🇬 新加坡','my':'🇲🇾 马来西亚'} %}
+      {% for d in dests_clean %}
+      <button class="dest-btn" onclick="quickSelectDest('{{ d }}', '{{ DEST_DISPLAY.get(d, d) }}')">
+        {{ DEST_DISPLAY.get(d, d) }}
+      </button>
+      {% endfor %}
+      <a href="{{ url_for('onboarding') }}" class="dest-btn dest-btn-add" title="修改目的地">＋</a>
+    </div>
+    <div class="dest-shortcuts-hint">点击国家探索路线 · 或转动下方地球仪点击白点</div>
+  </div>
+  {% endif %}
+
   {# ── 地球仪 ── #}
   <div class="globe-wrap">
     <canvas id="globe-canvas"></canvas>
     <div id="globe-tooltip" class="globe-tooltip"></div>
+    <div class="globe-hint">↑ 拖动旋转 · 点击白点探索目的地</div>
   </div>
 
   {# ── 星轨地图 ── #}
@@ -169,6 +189,7 @@
       <div>
         <span class="route-panel-dest" id="route-panel-dest">目的地</span>
         <span class="route-panel-hint">选一条路，看看怎么走</span>
+        <a id="country-archive-link" href="#" class="btn-text" style="font-size:11px;display:block;margin-top:4px;opacity:.5">查看国家移民档案 →</a>
       </div>
       <button class="route-panel-close" onclick="closeRoutePanel()">×</button>
     </div>
@@ -425,6 +446,54 @@
   margin-top: 16px;
 }
 
+/* ── 目的地快捷入口 ── */
+.dest-shortcuts {
+  margin-bottom: 16px;
+}
+.dest-shortcuts-label {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.dest-shortcuts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.dest-btn {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.dest-btn:hover, .dest-btn.active {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+.dest-btn-add {
+  color: var(--ink-faint);
+  font-size: 16px;
+  padding: 6px 10px;
+}
+.dest-shortcuts-hint {
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
 /* ── 地球仪容器 ── */
 .globe-wrap {
   background: #0a0a12;
@@ -451,6 +520,18 @@
   border-radius: 4px;
   pointer-events: none;
   display: none;
+}
+.globe-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  color: rgba(255,255,255,.25);
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: .04em;
 }
 
 /* ── 我的旅程 ── */
@@ -1035,6 +1116,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// ── 快速选择目的地（按钮触发，不依赖地球仪点击） ──────
+const DEST_NAMES_MAP = {
+  nz:'新西兰', au:'澳大利亚', ca:'加拿大', uk:'英国',
+  us:'美国', pt:'葡萄牙', de:'德国', jp:'日本',
+  th:'泰国', ae:'阿联酋', sg:'新加坡', my:'马来西亚',
+};
+function quickSelectDest(code, label) {
+  // 高亮按钮
+  document.querySelectorAll('.dest-btn').forEach(b => b.classList.remove('active'));
+  const btn = event.currentTarget;
+  if (btn) btn.classList.add('active');
+
+  const name = DEST_NAMES_MAP[code] || label;
+  showRoutePanel({code, name, coords: null});
+}
+
 // ── 节点详情
 function selectStage(key, name, desc) {
   document.getElementById('detail-name').textContent = name;
@@ -1092,6 +1189,9 @@ async function showRoutePanel(dest) {
   const advisorBox  = document.getElementById('advisor-box');
   const advisorText = document.getElementById('advisor-text');
   document.getElementById('route-panel-dest').textContent = dest.name;
+  // 更新国家档案链接
+  const archiveLink = document.getElementById('country-archive-link');
+  if (archiveLink) archiveLink.href = `/country/${dest.code}`;
   panel.style.display = 'block';
   cards.innerHTML = '<div style="font-size:12px;color:var(--ink-muted);padding:8px 0">加载路线…</div>';
 
