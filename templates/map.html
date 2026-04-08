@@ -89,24 +89,27 @@
     </div>
   </div>
 
-  {# ── 目的地快速入口 ── #}
-  {% set dests_clean = [] %}
-  {% for d in destinations %}{% if d not in ['other','unknown'] %}{% set _ = dests_clean.append(d) %}{% endif %}{% endfor %}
-  {% if dests_clean %}
+  {# ── 目的地入口（全部显示，用户已选高亮）── #}
+  {% set DEST_DISPLAY = [
+    ('nz','🇳🇿 新西兰'), ('au','🇦🇺 澳大利亚'), ('ca','🇨🇦 加拿大'),
+    ('uk','🇬🇧 英国'),   ('us','🇺🇸 美国'),     ('pt','🇵🇹 葡萄牙'),
+    ('de','🇩🇪 德国'),   ('jp','🇯🇵 日本'),     ('th','🇹🇭 泰国'),
+    ('ae','🇦🇪 阿联酋'),
+  ] %}
+  {% set my_dests = destinations %}
   <div class="dest-shortcuts">
-    <div class="dest-shortcuts-label">你的目的地</div>
+    <div class="dest-shortcuts-label">选择目的地，查看移民路线</div>
     <div class="dest-shortcuts-row">
-      {% set DEST_DISPLAY = {'nz':'🇳🇿 新西兰','au':'🇦🇺 澳大利亚','ca':'🇨🇦 加拿大','uk':'🇬🇧 英国','us':'🇺🇸 美国','pt':'🇵🇹 葡萄牙','de':'🇩🇪 德国','jp':'🇯🇵 日本','th':'🇹🇭 泰国','ae':'🇦🇪 阿联酋','sg':'🇸🇬 新加坡','my':'🇲🇾 马来西亚'} %}
-      {% for d in dests_clean %}
-      <button class="dest-btn" onclick="quickSelectDest('{{ d }}', '{{ DEST_DISPLAY.get(d, d) }}')">
-        {{ DEST_DISPLAY.get(d, d) }}
+      {% for code, label in DEST_DISPLAY %}
+      <button class="dest-btn {% if code in my_dests %}dest-btn-mine{% endif %}"
+              onclick="quickSelectDest('{{ code }}', '{{ label }}')">
+        {{ label }}
       </button>
       {% endfor %}
-      <a href="{{ url_for('onboarding') }}" class="dest-btn dest-btn-add" title="修改目的地">＋</a>
+      <a href="{{ url_for('onboarding') }}" class="dest-btn dest-btn-add" title="修改我的目的地">✎</a>
     </div>
-    <div class="dest-shortcuts-hint">点击国家探索路线 · 或转动下方地球仪点击白点</div>
+    <div class="dest-shortcuts-hint">★ 标记为你已选择的目的地 · 点任意国家查看路线</div>
   </div>
-  {% endif %}
 
   {# ── 地球仪 ── #}
   <div class="globe-wrap">
@@ -157,6 +160,11 @@
       </div>
 
     </div>
+  </div>
+
+  {# ── 星轨说明 ── #}
+  <div style="font-family:-apple-system,sans-serif;font-size:11px;color:var(--ink-faint);margin-bottom:8px;padding:0 2px">
+    ↑ 你当前的旅程阶段 · 点击节点可标记进度 · 路线选择在上方
   </div>
 
   {# ── 当前节点详情 ── #}
@@ -483,9 +491,19 @@
   border-color: var(--ink);
   background: var(--paper);
 }
+.dest-btn-mine {
+  border-color: var(--ink-muted);
+  font-weight: 600;
+}
+.dest-btn-mine::after {
+  content: ' ★';
+  font-size: 9px;
+  color: var(--ink-muted);
+  vertical-align: super;
+}
 .dest-btn-add {
   color: var(--ink-faint);
-  font-size: 16px;
+  font-size: 14px;
   padding: 6px 10px;
 }
 .dest-shortcuts-hint {
