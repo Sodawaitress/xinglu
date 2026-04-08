@@ -447,7 +447,8 @@ def advisor():
             "https://api.groq.com/openai/v1/chat/completions",
             data=payload,
             headers={"Authorization": f"Bearer {groq_key}",
-                     "Content-Type": "application/json"},
+                     "Content-Type": "application/json",
+                     "User-Agent": "Mozilla/5.0"},
         )
         with urllib.request.urlopen(req, timeout=20) as resp:
             result = json.loads(resp.read())
