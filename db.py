@@ -280,6 +280,24 @@ _SEED_VISA_TYPES = [
      "6个月入境找工作，到手后转工作签", "https://www.make-it-in-germany.com/en/visa-residence/types/job-seekers"),
     ("ae_gv", "ae", "黄金签证 Golden Visa", "UAE Golden Visa", "nomad",
      "10年居留，房产/投资/专业人才多路径", "https://u.ae/en/information-and-services/visa-and-emirates-id/residence-visas/golden-visa"),
+
+    # US
+    ("us_h1b",  "us", "H-1B 工作签证",       "H-1B Specialty Occupation Visa", "skilled",
+     "雇主担保+每年4月抽签，美国最主要工作签证通道", "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations"),
+    ("us_o1",   "us", "O-1 杰出人才签证",     "O-1 Extraordinary Ability Visa", "skilled",
+     "无需抽签，适合在科学/艺术/商业/体育等领域有杰出成就的人才", "https://www.uscis.gov/working-in-the-united-states/temporary-workers/o-1-visa-individuals-with-extraordinary-ability-or-achievement"),
+    ("us_niw",  "us", "EB-2 NIW 国家利益豁免", "EB-2 National Interest Waiver",  "skilled",
+     "自我请愿绿卡，无需雇主担保，需证明工作对美国国家利益有重要价值", "https://www.uscis.gov/working-in-the-united-states/permanent-workers/employment-based-immigration-second-preference-eb-2"),
+
+    # UK
+    ("uk_hpi",  "uk", "高潜力人才签证 HPI",   "High Potential Individual Visa", "skilled",
+     "顶尖全球大学毕业生2年免担保工签，无需工作邀请", "https://www.gov.uk/high-potential-individual-visa"),
+
+    # TH
+    ("th_ltr",       "th", "长期居留签证 LTR",     "Long-Term Resident Visa",        "investment",
+     "10年居留，4类人群：富裕退休/被动收入/远程工作者/高技能人才", "https://ltr.boi.go.th"),
+    ("th_privilege", "th", "Thailand Privilege（原Elite）", "Thailand Privilege Card", "investment",
+     "付费会员制，5-20年居留许可，含增值服务", "https://www.thailandprivilege.co.th"),
 ]
 
 _SEED_REQUIREMENTS = [
@@ -330,6 +348,57 @@ _SEED_REQUIREMENTS = [
     ("req_jp_hsp_points", "jp", "HSP 积分计算（需≥70分）", "Calculate HSP Points",
      "document", 0, 0, 0,
      "https://www.moj.go.jp/isa/applications/procedures/visa_hsp.html"),
+
+    # ── US ─────────────────────────────────────────────────────────────────────
+    ("req_us_employer", "us", "获得雇主工作邀请（Offer Letter）", "Job Offer from US Employer",
+     "application", 4, 24, 0,
+     "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations"),
+    ("req_us_h1b_lottery", "us", "H-1B 抽签登记（4月）", "H-1B Electronic Registration Lottery",
+     "wait", 0, 0, 10,
+     "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations"),
+    ("req_us_h1b_petition", "us", "H-1B 请愿书 I-129 申请", "File I-129 H-1B Petition",
+     "application", 3, 9, 2000,
+     "https://www.uscis.gov/i-129"),
+    ("req_us_o1_petition", "us", "O-1 请愿书 I-129 + 证据材料", "File I-129 O-1 with Evidence",
+     "application", 4, 16, 5000,
+     "https://www.uscis.gov/working-in-the-united-states/temporary-workers/o-1-visa-individuals-with-extraordinary-ability-or-achievement"),
+    ("req_us_niw_140", "us", "自请愿 I-140 移民请愿", "Self-Petition I-140 (EB-2 NIW)",
+     "application", 8, 36, 3000,
+     "https://www.uscis.gov/i-140"),
+    ("req_us_visa_interview", "us", "美领馆签证面试", "US Consulate Visa Interview (DS-160)",
+     "application", 4, 24, 185,
+     "https://travel.state.gov/content/travel/en/us-visas/employment.html"),
+
+    # ── UK ─────────────────────────────────────────────────────────────────────
+    ("req_uk_job_offer", "uk", "获得英国雇主 CoS（赞助证明）", "Certificate of Sponsorship from UK Employer",
+     "application", 4, 24, 0,
+     "https://www.gov.uk/skilled-worker-visa"),
+    ("req_uk_english", "uk", "英语要求（B1/B2）", "English Language Requirement",
+     "test", 1, 3, 200,
+     "https://www.gov.uk/skilled-worker-visa/knowledge-of-english"),
+    ("req_uk_salary", "uk", "满足最低薪资门槛（£38,700）", "Minimum Salary Threshold",
+     "document", 0, 0, 0,
+     "https://www.gov.uk/skilled-worker-visa/your-job"),
+    ("req_uk_visa_app", "uk", "在线申请 Skilled Worker Visa", "Apply Online for Skilled Worker Visa",
+     "application", 1, 3, 1420,
+     "https://www.gov.uk/skilled-worker-visa/apply"),
+    ("req_uk_hpi_degree", "uk", "顶尖大学学位证明（HPI）", "Qualifying Degree from Top Global University",
+     "document", 0, 0, 0,
+     "https://www.gov.uk/high-potential-individual-visa/eligibility"),
+
+    # ── TH ─────────────────────────────────────────────────────────────────────
+    ("req_th_income_proof", "th", "海外收入证明（LTR要求$80K/年）", "Overseas Income Proof for LTR",
+     "document", 1, 4, 0,
+     "https://ltr.boi.go.th/en/qualification.html"),
+    ("req_th_health_ins", "th", "泰国医疗保险（40万铢/年）", "Health Insurance in Thailand",
+     "document", 1, 2, 600,
+     "https://ltr.boi.go.th/en/qualification.html"),
+    ("req_th_ltr_apply", "th", "通过 BOI 网站申请 LTR 签证", "Apply for LTR via BOI Portal",
+     "application", 4, 12, 300,
+     "https://ltr.boi.go.th"),
+    ("req_th_privilege_pay", "th", "支付 Thailand Privilege 会费", "Pay Thailand Privilege Membership Fee",
+     "payment", 0, 4, 15000,
+     "https://www.thailandprivilege.co.th/membership-packages"),
 
     # ── CA ─────────────────────────────────────────────────────────────────────
     ("req_ca_ielts", "ca", "语言考试 (IELTS/CELPIP)", "Language Test",
@@ -414,6 +483,47 @@ _SEED_ROUTES = [
      "open", 1, 3,
      "10年居留，多路径：200万迪拉姆房产/创业/专业人才/学者。",
      '["golden visa suspended","UAE entry restriction"]', ""),
+
+    # US
+    ("us_h1b_cn", "us_h1b", "cn", "中国 → 美国 H-1B 工作签证",
+     "restricted", 18, 60,
+     "每年4月抽签（中签率约25%），中签后雇主申请I-129，10月1日才能开始工作。中国护照额外排期影响较小但存在。",
+     '["H-1B lottery","registration suspended","visa ban","H-1B transfer"]',
+     "⚠ 2024年中签率下滑，建议同时准备备选路线"),
+
+    ("us_o1_cn", "us_o1", "cn", "中国 → 美国 O-1 杰出人才签证",
+     "open", 6, 18,
+     "无需抽签，适合发表过高影响力论文/获奖/受媒体报道等有记录的专业人才。需律师整理证据包。",
+     '["O-1 denial","extraordinary ability standard tightened"]', ""),
+
+    ("us_niw_cn", "us_niw", "cn", "中国 → 美国 EB-2 NIW 绿卡（国家利益豁免）",
+     "restricted", 36, 120,
+     "自我请愿绿卡，无需雇主担保。中国出生优先级积压严重，排期可达数十年。I-140批准后可维持身份。",
+     '["NIW denial rate","China backlog","EB-2 retrogression","priority date"]',
+     "⚠ 中国出生排期积压严重，申请前需评估等候时间"),
+
+    # UK
+    ("uk_skilled_cn", "uk_skilled", "cn", "中国 → 英国 技术工作签证",
+     "open", 3, 9,
+     "需英国雇主提供 CoS（担保证明），年薪≥£38,700，满足英语要求。5年后可申 ILR（永居）。",
+     '["skilled worker visa suspended","CoS allocation","salary threshold raised","NHS surcharge"]', ""),
+
+    ("uk_hpi_cn", "uk_hpi", "cn", "中国 → 英国 高潜力人才签证（HPI）",
+     "open", 2, 5,
+     "毕业于全球顶50大学（含清北复交）无需工作邀请，2年签证可自由工作，适合应届毕业生探路。",
+     '["HPI suspended","qualifying university list changed"]',
+     "清华/北大/复旦/交大/浙大均在合格院校名单"),
+
+    # TH
+    ("th_ltr_cn", "th_ltr", "cn", "中国 → 泰国 LTR 长期居留签证（10年）",
+     "open", 2, 6,
+     "四类资格之一：远程工作者需雇主合同+年收入≥$80K，泰国医疗保险。10年签，可免工作许可远程工作。",
+     '["LTR income requirement","BOI policy change"]', ""),
+
+    ("th_privilege_cn", "th_privilege", "cn", "中国 → 泰国 Thailand Privilege 会员签证",
+     "open", 1, 3,
+     "付费获得5年/10年/20年居留许可，含机场礼宾、医院快速通道等服务。适合无需工作、长期生活泰国人群。",
+     '["Thailand Privilege cancelled","membership fee increase"]', ""),
 ]
 
 # route_requirements: (route_id, req_id, order, optional, notes)
@@ -494,6 +604,40 @@ _SEED_ROUTE_REQS = [
 
     # AE Golden Visa
     ("ae_gv_cn", "req_au_police",       1, False, ""),
+
+    # US H-1B
+    ("us_h1b_cn", "req_us_employer",       1, False, "需在4月1日之前有工作offer，雇主愿意担保"),
+    ("us_h1b_cn", "req_us_h1b_lottery",    2, False, "每年3月开放注册（$10），4月抽签，中签率约25%"),
+    ("us_h1b_cn", "req_us_h1b_petition",   3, False, "中签后雇主律师准备I-129文件，10月1日生效"),
+    ("us_h1b_cn", "req_us_visa_interview", 4, False, "在中国美国领事馆完成面试和贴签"),
+
+    # US O-1
+    ("us_o1_cn", "req_us_o1_petition",    1, False, "需积累8类证据中至少3类（奖项/媒体/高薪/评审等）"),
+    ("us_o1_cn", "req_us_employer",       2, False, "需雇主或代理人（Agent）作为请愿方"),
+    ("us_o1_cn", "req_us_visa_interview", 3, False, ""),
+
+    # US NIW
+    ("us_niw_cn", "req_us_niw_140",       1, False, "自我请愿，满足 Dhirani 三要素框架"),
+    ("us_niw_cn", "req_us_visa_interview", 2, False, "I-140批准后等优先级排期再办移民签证"),
+
+    # UK Skilled Worker
+    ("uk_skilled_cn", "req_uk_job_offer", 1, False, "雇主需是 UKVI 认可担保商，CoS 有引用编号"),
+    ("uk_skilled_cn", "req_uk_salary",    2, False, "£38,700/年 或该职业最低薪资（取高值）"),
+    ("uk_skilled_cn", "req_uk_english",   3, False, "B1 等级，雅思5.5各项或护照豁免"),
+    ("uk_skilled_cn", "req_uk_visa_app",  4, False, "在 UKVI 网站在线申请，需生物特征采集"),
+
+    # UK HPI
+    ("uk_hpi_cn", "req_uk_hpi_degree",   1, False, "毕业5年内有效，查官网合格院校名单"),
+    ("uk_hpi_cn", "req_uk_visa_app",     2, False, "申请费£715+IHS医疗附加费"),
+
+    # TH LTR
+    ("th_ltr_cn", "req_th_income_proof", 1, False, "远程工作者：需至少1年雇主合同+W-2/税单证明"),
+    ("th_ltr_cn", "req_th_health_ins",   2, False, "泰国境内医疗保险，覆盖40万铢住院"),
+    ("th_ltr_cn", "req_th_ltr_apply",    3, False, "在BOI网站提交申请，审批约30个工作日"),
+
+    # TH Privilege
+    ("th_privilege_cn", "req_th_privilege_pay", 1, False, "5年套餐约$30,000起，20年套餐最贵"),
+    ("th_privilege_cn", "req_th_health_ins",    2, True,  "部分套餐含保险，确认覆盖范围"),
 ]
 
 # tasks: (id, req_id, order, title, description, gotcha, doc_url, est_hours)
@@ -782,6 +926,213 @@ _SEED_TASKS = [
      "被选中后收到邀请提交居留申请（Residence Application），需在4个月内提交，附上所有材料",
      "居留申请材料量大，建议收到邀请后立即开始准备，4个月非常紧张",
      "https://www.immigration.govt.nz/new-zealand-visas/visa-types/skilled-migrant-category-resident-visa", 20.0),
+
+    # ── req_us_employer ────────────────────────────────────────────────────────
+    ("req_us_employer_01", "req_us_employer", 1,
+     "确认职位是否符合 H-1B 专业职位要求",
+     "H-1B 要求职位是「专业职位」（Specialty Occupation），通常需要相关领域本科以上学历。IT、工程、金融、会计、建筑等均符合。",
+     "销售、市场、行政等职位有时被拒，确认职位说明（Job Description）强调专业性",
+     "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations", 2.0),
+
+    ("req_us_employer_02", "req_us_employer", 2,
+     "确认雇主是 USCIS 认可的担保雇主",
+     "雇主需在 USCIS 有效注册，且愿意承担申请费用（政府费用约3,000–5,000美元起）",
+     "小公司或初创公司有时不了解流程，需提前确认是否愿意配合，不要等到3月才问",
+     "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations", 1.0),
+
+    # ── req_us_h1b_lottery ─────────────────────────────────────────────────────
+    ("req_us_h1b_lottery_01", "req_us_h1b_lottery", 1,
+     "雇主在3月初开放窗口完成 H-1B 电子注册",
+     "USCIS 每年约3月1日-20日开放注册窗口，雇主在系统提交申请人信息（$10/人），之后进行抽签",
+     "注册由雇主操作，你无法自己注册。确保雇主HR在截止日前完成，错过窗口只能等下一年",
+     "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations", 0.5),
+
+    ("req_us_h1b_lottery_02", "req_us_h1b_lottery", 2,
+     "4月初等待抽签结果通知",
+     "抽签结果通常在4月初公布。中签则进入请愿阶段；未中签则本年度结束。",
+     "有硕士学位（美国院校）的人参与两轮抽签（普通+硕士池），中签概率略高",
+     "https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations", 0.5),
+
+    # ── req_us_h1b_petition ────────────────────────────────────────────────────
+    ("req_us_h1b_petition_01", "req_us_h1b_petition", 1,
+     "雇主律师准备 LCA（劳工条件申请）",
+     "雇主律师向劳工部（DOL）申请 LCA，证明工资不低于该职位所在地区的行业工资标准（Prevailing Wage）",
+     "LCA审批通常7-10个工作日，加急可缩短。工资低于 Prevailing Wage 是拒签常见原因",
+     "https://flag.dol.gov/", 2.0),
+
+    ("req_us_h1b_petition_02", "req_us_h1b_petition", 2,
+     "整理并提交 I-129 请愿书材料",
+     "律师准备I-129表格+支持文件（学位证明、工作说明书、雇用合同、公司文件等），向USCIS提交",
+     "如果学历是非美国的，需要先做学历认证（Credential Evaluation），提前2-4周准备",
+     "https://www.uscis.gov/i-129", 8.0),
+
+    ("req_us_h1b_petition_03", "req_us_h1b_petition", 3,
+     "等待 USCIS 批准（或选择加急处理）",
+     "标准处理3-6个月，加急处理（Premium Processing，$2,805）约15个工作日。10月1日为H-1B生效日。",
+     "加急处理会缩短等待时间但不保证批准，USCIS可能发出 RFE（补充证据要求）",
+     "https://www.uscis.gov/forms/all-forms/h-1b-cap-and-cap-exempt-filing-information", 4.0),
+
+    # ── req_us_o1_petition ─────────────────────────────────────────────────────
+    ("req_us_o1_petition_01", "req_us_o1_petition", 1,
+     "自评是否满足 O-1A 8类证据中的3类",
+     "8类标准：①重大奖项 ②重要会员 ③媒体报道 ④评审他人工作 ⑤重要贡献 ⑥高薪 ⑦关键角色 ⑧。至少3类有实质性证据。",
+     "不需要每条都完美，但每条都需要实质性文件支持（引用数量、媒体截图、奖项证书等）",
+     "https://www.uscis.gov/working-in-the-united-states/temporary-workers/o-1-visa-individuals-with-extraordinary-ability-or-achievement", 4.0),
+
+    ("req_us_o1_petition_02", "req_us_o1_petition", 2,
+     "委托专业移民律师整理证据包",
+     "O-1申请成败很大程度取决于证据包的写法，律师费通常$5,000-$15,000。找有O-1成功案例的律师。",
+     "避免使用批量作业的大型律所，个人化服务的小律所往往对你的案子更用心",
+     "https://www.uscis.gov/i-129", 20.0),
+
+    ("req_us_o1_petition_03", "req_us_o1_petition", 3,
+     "获得咨询意见（Advisory Opinion）",
+     "O-1需要来自行业协会或专家的咨询意见信，证明申请人在领域内具有杰出地位",
+     "咨询意见不是普通推荐信，需要行业协会官方出具，提前联系，有时需要付费",
+     "https://www.uscis.gov/i-129", 8.0),
+
+    # ── req_us_niw_140 ─────────────────────────────────────────────────────────
+    ("req_us_niw_140_01", "req_us_niw_140", 1,
+     "评估是否满足 NIW 三要素（Dhirani 框架）",
+     "三要素：①工作领域有重要价值且用途广泛 ②你特别适合推进该领域 ③豁免雇主担保有利于美国国家利益",
+     "STEM领域申请成功率较高，文艺类难度大。先自评再咨询律师",
+     "https://www.uscis.gov/working-in-the-united-states/permanent-workers/employment-based-immigration-second-preference-eb-2", 4.0),
+
+    ("req_us_niw_140_02", "req_us_niw_140", 2,
+     "准备支持材料（论文、引用、奖项、专利等）",
+     "整理所有能证明你在领域内有重要贡献的材料：已发表论文+引用次数、专利、媒体报道、奖项、推荐信",
+     "引用次数要用可验证的来源（Google Scholar、Web of Science），不能自引",
+     "https://www.uscis.gov/i-140", 40.0),
+
+    ("req_us_niw_140_03", "req_us_niw_140", 3,
+     "律师撰写请愿书并提交 I-140",
+     "律师撰写Please支持信（cover letter），连同证据材料向USCIS提交I-140，费用约$700（政府费）+律师费",
+     "I-140批准后即使换工作或失业也不会作废，保留你的优先级日期",
+     "https://www.uscis.gov/i-140", 4.0),
+
+    # ── req_us_visa_interview ──────────────────────────────────────────────────
+    ("req_us_visa_interview_01", "req_us_visa_interview", 1,
+     "在美领馆官网填写 DS-160 申请表",
+     "登录 ceac.state.gov 填写 DS-160 非移民签证申请表（H-1B/O-1）或 DS-260（移民签证），完成后打印确认页",
+     "DS-160必须如实填写，有任何错误可能导致拒签，特别是5年内出行史和是否曾被拒签",
+     "https://ceac.state.gov/genniv/", 3.0),
+
+    ("req_us_visa_interview_02", "req_us_visa_interview", 2,
+     "预约面试时间（CGI Federal 系统）",
+     "在 ustraveldocs.com 缴纳签证费（$185）并预约面试时间。北京/上海/广州/沈阳/成都均有领事馆。",
+     "H-1B旺季（10月前后）面试时间可能需要等待1-3个月，提前预约",
+     "https://www.ustraveldocs.com/cn/", 2.0),
+
+    ("req_us_visa_interview_03", "req_us_visa_interview", 3,
+     "准备面试材料并完成面试",
+     "携带：DS-160确认页、预约确认、护照（及旧护照）、照片、I-797批准通知、支持文件。面试时间约5-15分钟。",
+     "行政处理（Administrative Processing / 221g）可能需额外等待，IT行业中国申请人出现概率较高，预留时间",
+     "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/administrative-processing-information.html", 4.0),
+
+    # ── req_uk_job_offer ──────────────────────────────────────────────────────
+    ("req_uk_job_offer_01", "req_uk_job_offer", 1,
+     "确认雇主是 UKVI 认可担保商",
+     "在英国内政部官网查询雇主是否在 Register of Licensed Sponsors 名单中，这是必要前提",
+     "雇主临时申请担保资质约6-8周，如果雇主还没有担保资质，最终工作时间会推迟",
+     "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers", 1.0),
+
+    ("req_uk_job_offer_02", "req_uk_job_offer", 2,
+     "雇主分配 CoS（赞助证明）并提供参考号",
+     "雇主在担保管理系统（SMS）为你创建 CoS，你会收到包含 CoS 参考号的 offer，申请签证时需要输入",
+     "CoS有有效期（通常3个月），注意在有效期内完成签证申请",
+     "https://www.gov.uk/skilled-worker-visa", 1.0),
+
+    # ── req_uk_salary ─────────────────────────────────────────────────────────
+    ("req_uk_salary_01", "req_uk_salary", 1,
+     "确认职位薪资达到 £38,700 最低门槛",
+     "Skilled Worker 签证要求年薪不低于 £38,700 或该职位行业基准（取高值）。低薪职位（如护士、教师）有豁免规定。",
+     "2024年4月起门槛从£26,200提升至£38,700，很多中小企业还没更新offer，确认合同金额",
+     "https://www.gov.uk/skilled-worker-visa/your-job", 1.0),
+
+    # ── req_uk_english ────────────────────────────────────────────────────────
+    ("req_uk_english_01", "req_uk_english", 1,
+     "确认英语豁免条件",
+     "中国护照不在英语母语国家豁免范围内，通常需要提供英语成绩。但若持英国大学学位可豁免。",
+     "IELTS for UKVI（雅思移民版）是常用选择，需在认可考场参加，普通雅思不被接受",
+     "https://www.gov.uk/skilled-worker-visa/knowledge-of-english", 1.0),
+
+    ("req_uk_english_02", "req_uk_english", 2,
+     "参加 IELTS for UKVI 考试（需 B1 各项 4.0）",
+     "Skilled Worker 通常要求 B1 等级（IELTS SELT 各项 4.0），高于B1 的级别无需考试。",
+     "注意是 IELTS for UKVI，不是普通的学术或培训类雅思，报名时要选对版本",
+     "https://www.ielts.org/", 20.0),
+
+    # ── req_uk_visa_app ────────────────────────────────────────────────────────
+    ("req_uk_visa_app_01", "req_uk_visa_app", 1,
+     "在 UKVI 网站提交在线申请",
+     "在 gov.uk/apply-to-come-to-the-uk 完成申请，支付签证费（£1,420，含IHS医疗附加费约£1,035/年）",
+     "IHS（Immigration Health Surcharge）按居留年限预收，5年签证约£5,175，金额较大提前准备",
+     "https://www.gov.uk/skilled-worker-visa/apply", 3.0),
+
+    ("req_uk_visa_app_02", "req_uk_visa_app", 2,
+     "预约生物特征采集（UK Visa Application Centre）",
+     "在申请提交后，需前往英国签证申请中心（UKVISAS）录入指纹和拍照。中国有多个城市设有中心。",
+     "生物采集预约可能需要等待1-3周，提交申请后立即预约，避免签证申请过期",
+     "https://www.gov.uk/skilled-worker-visa/apply", 2.0),
+
+    # ── req_uk_hpi_degree ─────────────────────────────────────────────────────
+    ("req_uk_hpi_degree_01", "req_uk_hpi_degree", 1,
+     "确认所在大学是否在 HPI 合格院校名单中",
+     "查询 gov.uk 提供的全球顶尖大学名单，包括清华/北大/复旦/交大/浙大等中国大学，毕业5年内有效。",
+     "名单每年更新，在校时不在名单不代表毕业时不在，但毕业后5年内需申请",
+     "https://www.gov.uk/high-potential-individual-visa/eligibility", 1.0),
+
+    ("req_uk_hpi_degree_02", "req_uk_hpi_degree", 2,
+     "准备学历认证（ECCTIS 认证）",
+     "申请 HPI 需提交 ECCTIS（前 UK NARIC）的学历认证报告，证明你的学位等同于英国学位标准",
+     "ECCTIS认证约需1-3周，费用£100左右，提前申请",
+     "https://www.ecctis.com/", 8.0),
+
+    # ── req_th_income_proof ────────────────────────────────────────────────────
+    ("req_th_income_proof_01", "req_th_income_proof", 1,
+     "准备过去2年收入证明（工资单+税单）",
+     "LTR远程工作者类别需过去2年每年海外收入≥$80,000（约合275万铢）。需提供雇主信和收入证明",
+     "收入必须来自海外雇主，泰国境内收入不计。如果是自雇，需提供注册证明和客户合同",
+     "https://ltr.boi.go.th/en/qualification.html", 4.0),
+
+    ("req_th_income_proof_02", "req_th_income_proof", 2,
+     "确认拥有至少1年的现有雇主合同",
+     "需要提供至少持续1年的远程工作合同，合同需载明工作可在泰国境外完成",
+     "临时合同或项目制合同可能不被接受，确认合同条款有明确的长期远程工作条款",
+     "https://ltr.boi.go.th/en/qualification.html", 1.0),
+
+    # ── req_th_health_ins ──────────────────────────────────────────────────────
+    ("req_th_health_ins_01", "req_th_health_ins", 1,
+     "购买覆盖泰国的国际医疗保险",
+     "LTR要求持有在泰国有效的医疗保险，覆盖住院费用至少40万泰铢（约$11,000）。全球保险计划通常满足条件。",
+     "中国国内医疗保险通常不覆盖泰国，需单独购买国际医疗保险或 Pacific Cross / Cigna 等计划",
+     "https://ltr.boi.go.th/en/qualification.html", 2.0),
+
+    # ── req_th_ltr_apply ──────────────────────────────────────────────────────
+    ("req_th_ltr_apply_01", "req_th_ltr_apply", 1,
+     "在 BOI LTR 网站注册账号并提交申请",
+     "登录 ltr.boi.go.th，填写申请表，上传所有材料（护照、收入证明、保险证明、雇主合同）",
+     "申请系统有时不稳定，建议使用Chrome浏览器，提前备好PDF版本所有文件",
+     "https://ltr.boi.go.th", 4.0),
+
+    ("req_th_ltr_apply_02", "req_th_ltr_apply", 2,
+     "等待 BOI 审批（约30个工作日）",
+     "BOI审批通过后发送批准信，凭批准信前往泰国驻华使馆申请LTR签证贴签",
+     "BOI批准信有效期90天，需在此期间完成使馆签证申请",
+     "https://ltr.boi.go.th", 2.0),
+
+    # ── req_th_privilege_pay ──────────────────────────────────────────────────
+    ("req_th_privilege_pay_01", "req_th_privilege_pay", 1,
+     "选择合适的 Privilege 套餐",
+     "套餐从5年（约$16,000）到20年（约$70,000）不等。越长的套餐单年费用越低，包含的增值服务越多。",
+     "会员资格不可转让，购买前确认自己的长期计划，退款政策有限制",
+     "https://www.thailandprivilege.co.th/membership-packages", 4.0),
+
+    ("req_th_privilege_pay_02", "req_th_privilege_pay", 2,
+     "完成购买并等待会员卡及居留证办理",
+     "付款后Thailand Privilege服务中心安排后续手续，包括入境后前往移民局办理居留戳",
+     "购买后需实际入境泰国才能激活居留状态，不入境不算居留时间",
+     "https://www.thailandprivilege.co.th", 8.0),
 ]
 
 
