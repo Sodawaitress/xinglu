@@ -1259,8 +1259,14 @@ async function loadJourneys() {
 
 async function resumeJourney(routeId, routeName) {
   _currentRouteId = routeId;
-  // 滚动到任务面板
+  // 重新激活旅程（paused → active，同时暂停其他 active）
+  await fetch('/api/map/select-route', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({route_id: routeId, dest: routeId.split('_')[0]})
+  });
   await loadTaskPanel(routeId, routeName);
+  await loadJourneys();
   document.getElementById('task-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 

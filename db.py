@@ -1105,7 +1105,11 @@ def get_user_task_progress(user_id: int, route_id: str) -> dict:
                  f"WHERE user_id=:uid AND task_id IN ({placeholders})"),
             params
         ).fetchall()
-    return {r["task_id"]: dict(r._mapping) for r in rows}
+    result = {}
+    for r in rows:
+        d = dict(r._mapping)
+        result[d["task_id"]] = d
+    return result
 
 
 def get_route_progress_pct(user_id: int, route_id: str) -> int:
