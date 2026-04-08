@@ -1,9 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}设置路线 · 星路{% endblock %}
+{% block title %}{{ '修改信息' if profile else '设置路线' }} · 星路{% endblock %}
 {% block content %}
+{% set p = profile or {} %}
+{% set cur_passport = p.get('passport','') if p else '' %}
+{% set cur_country  = p.get('current_country','') if p else '' %}
+{% set cur_visa     = p.get('current_visa','') if p else '' %}
+{% set cur_rt       = p.get('route_type','') if p else '' %}
+
 <div class="page-container" style="max-width:560px">
 
-  <div class="auth-title" style="margin-bottom:6px">你的起点</div>
+  <div class="auth-title" style="margin-bottom:6px">{{ '修改信息' if profile else '你的起点' }}</div>
   <div class="auth-sub">这决定了你的地图长什么样。你可以随时修改。</div>
 
   <form method="post" style="margin-top:28px">
@@ -12,25 +18,15 @@
       <label class="form-label">你的护照国籍</label>
       <select name="passport" class="form-input" required>
         <option value="">选择…</option>
-        <option value="cn">🇨🇳 中国</option>
-        <option value="in">🇮🇳 印度</option>
-        <option value="us">🇺🇸 美国</option>
-        <option value="uk">🇬🇧 英国</option>
-        <option value="au">🇦🇺 澳大利亚</option>
-        <option value="nz">🇳🇿 新西兰</option>
-        <option value="ca">🇨🇦 加拿大</option>
-        <option value="jp">🇯🇵 日本</option>
-        <option value="kr">🇰🇷 韩国</option>
-        <option value="de">🇩🇪 德国</option>
-        <option value="fr">🇫🇷 法国</option>
-        <option value="br">🇧🇷 巴西</option>
-        <option value="ru">🇷🇺 俄罗斯</option>
-        <option value="sy">🇸🇾 叙利亚</option>
-        <option value="af">🇦🇫 阿富汗</option>
-        <option value="ir">🇮🇷 伊朗</option>
-        <option value="mm">🇲🇲 缅甸</option>
-        <option value="other">其他</option>
-        <option value="stateless">无国籍</option>
+        {% for val, label in [
+          ('cn','🇨🇳 中国'),('in','🇮🇳 印度'),('us','🇺🇸 美国'),('uk','🇬🇧 英国'),
+          ('au','🇦🇺 澳大利亚'),('nz','🇳🇿 新西兰'),('ca','🇨🇦 加拿大'),('jp','🇯🇵 日本'),
+          ('kr','🇰🇷 韩国'),('de','🇩🇪 德国'),('fr','🇫🇷 法国'),('br','🇧🇷 巴西'),
+          ('ru','🇷🇺 俄罗斯'),('sy','🇸🇾 叙利亚'),('af','🇦🇫 阿富汗'),
+          ('ir','🇮🇷 伊朗'),('mm','🇲🇲 缅甸'),('other','其他'),('stateless','无国籍')
+        ] %}
+        <option value="{{ val }}" {{ 'selected' if val == cur_passport }}>{{ label }}</option>
+        {% endfor %}
       </select>
     </div>
 
@@ -38,25 +34,15 @@
       <label class="form-label">现在在哪里</label>
       <select name="current_country" class="form-input" required>
         <option value="">选择…</option>
-        <option value="cn">🇨🇳 中国</option>
-        <option value="in">🇮🇳 印度</option>
-        <option value="us">🇺🇸 美国</option>
-        <option value="uk">🇬🇧 英国</option>
-        <option value="au">🇦🇺 澳大利亚</option>
-        <option value="nz">🇳🇿 新西兰</option>
-        <option value="ca">🇨🇦 加拿大</option>
-        <option value="jp">🇯🇵 日本</option>
-        <option value="kr">🇰🇷 韩国</option>
-        <option value="de">🇩🇪 德国</option>
-        <option value="fr">🇫🇷 法国</option>
-        <option value="pt">🇵🇹 葡萄牙</option>
-        <option value="ae">🇦🇪 阿联酋</option>
-        <option value="th">🇹🇭 泰国</option>
-        <option value="br">🇧🇷 巴西</option>
-        <option value="ru">🇷🇺 俄罗斯</option>
-        <option value="sg">🇸🇬 新加坡</option>
-        <option value="my">🇲🇾 马来西亚</option>
-        <option value="other">其他</option>
+        {% for val, label in [
+          ('cn','🇨🇳 中国'),('in','🇮🇳 印度'),('us','🇺🇸 美国'),('uk','🇬🇧 英国'),
+          ('au','🇦🇺 澳大利亚'),('nz','🇳🇿 新西兰'),('ca','🇨🇦 加拿大'),('jp','🇯🇵 日本'),
+          ('kr','🇰🇷 韩国'),('de','🇩🇪 德国'),('fr','🇫🇷 法国'),('pt','🇵🇹 葡萄牙'),
+          ('ae','🇦🇪 阿联酋'),('th','🇹🇭 泰国'),('br','🇧🇷 巴西'),('ru','🇷🇺 俄罗斯'),
+          ('sg','🇸🇬 新加坡'),('my','🇲🇾 马来西亚'),('other','其他')
+        ] %}
+        <option value="{{ val }}" {{ 'selected' if val == cur_country }}>{{ label }}</option>
+        {% endfor %}
       </select>
     </div>
 
@@ -64,29 +50,29 @@
       <label class="form-label">当前身份 / 签证状态</label>
       <select name="current_visa" class="form-input">
         <option value="">选择…</option>
-        <option value="citizen">公民 / 永居</option>
-        <option value="work">工签</option>
-        <option value="student">学签</option>
-        <option value="tourist">旅游签 / 短期</option>
-        <option value="family">家属签</option>
-        <option value="asylum">庇护申请中</option>
-        <option value="undocumented">无合法身份</option>
-        <option value="other">其他</option>
+        {% for val, label in [
+          ('citizen','公民 / 永居'),('work','工签'),('student','学签'),
+          ('tourist','旅游签 / 短期'),('family','家属签'),
+          ('asylum','庇护申请中'),('undocumented','无合法身份'),('other','其他')
+        ] %}
+        <option value="{{ val }}" {{ 'selected' if val == cur_visa }}>{{ label }}</option>
+        {% endfor %}
       </select>
     </div>
 
     <div class="form-group">
       <label class="form-label">想去哪里（可多选）</label>
       <div class="checkbox-grid">
-        {% for dest in [
+        {% for val, label in [
           ('nz','🇳🇿 新西兰'),('au','🇦🇺 澳大利亚'),('ca','🇨🇦 加拿大'),
           ('uk','🇬🇧 英国'),('us','🇺🇸 美国'),('pt','🇵🇹 葡萄牙'),
           ('de','🇩🇪 德国'),('jp','🇯🇵 日本'),('th','🇹🇭 泰国'),
           ('ae','🇦🇪 阿联酋'),('other','其他'),('unknown','还不确定')
         ] %}
         <label class="checkbox-item">
-          <input type="checkbox" name="destinations" value="{{ dest[0] }}">
-          <span>{{ dest[1] }}</span>
+          <input type="checkbox" name="destinations" value="{{ val }}"
+            {{ 'checked' if val in (existing_dests or []) }}>
+          <span>{{ label }}</span>
         </label>
         {% endfor %}
       </div>
@@ -95,18 +81,21 @@
     <div class="form-group">
       <label class="form-label">路线类型</label>
       <select name="route_type" class="form-input">
-        <option value="unknown">还不确定</option>
-        <option value="skilled">技术移民 / 工签</option>
-        <option value="nomad">数字游民</option>
-        <option value="family">家庭团聚</option>
-        <option value="asylum">庇护 / 保护</option>
-        <option value="investment">投资 / 退休</option>
+        {% for val, label in [
+          ('unknown','还不确定'),('skilled','技术移民 / 工签'),('nomad','数字游民'),
+          ('family','家庭团聚'),('asylum','庇护 / 保护'),('investment','投资 / 退休')
+        ] %}
+        <option value="{{ val }}" {{ 'selected' if val == cur_rt }}>{{ label }}</option>
+        {% endfor %}
       </select>
     </div>
 
     <button type="submit" class="btn-primary" style="width:100%;margin-top:8px">
-      生成我的地图 →
+      {{ '保存修改 →' if profile else '生成我的地图 →' }}
     </button>
+    {% if profile %}
+    <a href="{{ url_for('map_page') }}" class="btn-text" style="display:block;text-align:center;margin-top:12px">取消，返回地图</a>
+    {% endif %}
   </form>
 </div>
 {% endblock %}

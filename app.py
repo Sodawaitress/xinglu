@@ -188,7 +188,9 @@ def onboarding():
             headline=f"用户当前所在：{current_country}（{current_visa}）",
         )
         return redirect(url_for("map_page"))
-    return render_template("onboarding.html")
+    profile = db.get_profile(session["user_id"])
+    existing_dests = json.loads(profile["destinations"] or "[]") if profile else []
+    return render_template("onboarding.html", profile=profile, existing_dests=existing_dests)
 
 
 # ── Map ────────────────────────────────────────────────
@@ -232,6 +234,12 @@ def map_routes():
     if not dest:
         return jsonify([])
     routes = db.get_routes_by_dest(dest)
+    # 按用户护照排序：route_id 以 passport 结尾的排前面（如 cn 护照优先 au_189_cn）
+    profile = db.get_profile(session["user_id"])
+    passport = (profile.get("passport") or "").lower()[:2]
+    if passport:
+        routes.sort(key=lambda r: (0 if r["id"].endswith(f"_{passport}") else 1,
+                                    r.get("typical_months_min") or 99))
     # 叠加雷达告警：如果路线的 risk_keywords 命中最新新闻，status 降为 restricted
     latest = db.get_latest_report()
     if latest and latest.get("raw_json"):

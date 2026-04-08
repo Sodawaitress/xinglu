@@ -83,7 +83,10 @@
       </div>
       <div class="map-stage-now">现在：{{ current }}</div>
     </div>
-    <a href="{{ url_for('radar_page') }}" class="btn-text" style="font-size:12px">资讯雷达 →</a>
+    <div style="display:flex;gap:12px;align-items:center">
+      <a href="{{ url_for('radar_page') }}" class="btn-text" style="font-size:12px">资讯雷达 →</a>
+      <a href="{{ url_for('onboarding') }}" class="btn-text" style="font-size:12px;opacity:.4">修改信息</a>
+    </div>
   </div>
 
   {# ── 地球仪 ── #}
