@@ -850,47 +850,40 @@
 // ── 国家坐标表 [lat, lon] ──────────────────────────────
 const COORDS = {
   // 常见护照国
-  '中国': [35, 105], 'china': [35, 105], 'cn': [35, 105],
-  '美国': [38, -97], 'usa': [38, -97], 'united states': [38, -97], 'us': [38,-97],
-  '英国': [54, -2], 'uk': [54, -2], 'united kingdom': [54,-2],
-  '澳大利亚': [-25, 134], 'australia': [-25, 134], 'au': [-25,134],
-  '新西兰': [-41, 174], 'new zealand': [-41, 174], 'nz': [-41,174],
-  '加拿大': [56, -106], 'canada': [56, -106], 'ca': [56,-106],
-  '日本': [36, 138], 'japan': [36, 138], 'jp': [36,138],
-  '韩国': [36, 128], 'south korea': [36, 128], 'kr': [36,128],
-  '法国': [46, 2], 'france': [46, 2], 'fr': [46,2],
-  '德国': [51, 10], 'germany': [51, 10], 'de': [51,10],
-  '印度': [20, 78], 'india': [20, 78], 'in': [20,78],
-  '巴西': [-15, -47], 'brazil': [-15, -47], 'br': [-15,-47],
-  '俄罗斯': [60, 90], 'russia': [60, 90], 'ru': [60,90],
-  '叙利亚': [35, 38], 'syria': [35, 38], 'sy': [35,38],
-  '阿富汗': [33, 65], 'afghanistan': [33, 65], 'af': [33,65],
-  '伊朗': [32, 53], 'iran': [32, 53], 'ir': [32,53],
-  '缅甸': [17, 96], 'myanmar': [17, 96], 'mm': [17,96],
+  'cn': [35, 105], 'us': [38,-97], 'uk': [54,-2], 'au': [-25,134],
+  'nz': [-41,174], 'ca': [56,-106], 'jp': [36,138], 'kr': [36,128],
+  'fr': [46,2], 'de': [51,10], 'in': [20,78], 'br': [-15,-47],
+  'ru': [60,90], 'sy': [35,38], 'af': [33,65], 'ir': [32,53], 'mm': [17,96],
   // 目的地国
-  'pt': [39, -8], 'portugal': [39, -8], '葡萄牙': [39,-8],
-  'th': [15, 101], 'thailand': [15, 101], '泰国': [15,101],
-  'ae': [24, 54], 'uae': [24, 54], 'dubai': [25,55], '阿联酋': [24,54],
-  'other': null, 'unknown': null,
+  'pt': [39,-8], 'th': [15,101], 'ae': [24,54],
+  'sg': [1.35, 103.82], 'my': [3.14, 101.69],
 };
 
-function getCoords(name) {
-  if (!name) return null;
-  const k = name.toLowerCase().trim();
-  return COORDS[k] || null;
+function getCoords(code) {
+  if (!code) return null;
+  return COORDS[code.toLowerCase().trim()] || null;
 }
 
-// 目的地代码 → 国家名
+// 全部可用目的地（代码 → 中文名）
 const DEST_NAMES = {
   nz:'新西兰', au:'澳大利亚', ca:'加拿大', uk:'英国',
   us:'美国', pt:'葡萄牙', de:'德国', jp:'日本',
-  th:'泰国', ae:'阿联酋', other:'其他', unknown:'待定',
+  th:'泰国', ae:'阿联酋', sg:'新加坡', my:'马来西亚',
 };
 
 // ── 从 Jinja 拿数据 ───────────────────────────────────
 const PASSPORT        = {{ profile.passport | tojson }};
 const CURRENT_COUNTRY = {{ profile.current_country | tojson }};
-const DEST_CODES      = {{ destinations | tojson }};
+const DEST_CODES      = {{ destinations | tojson }};  // 用户选择的
+
+// 全部可供选择的目的地（地球仪显示所有）
+const ALL_DESTS = Object.entries(DEST_NAMES).map(([code, name]) => ({
+  code, name, coords: getCoords(code)
+})).filter(d => d.coords);
+const SELECTED_CODES = new Set(DEST_CODES.filter(c => c !== 'other' && c !== 'unknown'));
+
+// 地球仪暴露的接口（initGlobe 运行后填充）
+const GLOBE_API = { selectDest: null };
 
 // ── Three.js 地球仪 ────────────────────────────────────
 async function initGlobe() {
@@ -1014,28 +1007,47 @@ async function initGlobe() {
   const originCoords  = getCoords(PASSPORT);
   const currentCoords = getCoords(CURRENT_COUNTRY);
   const isSame        = CURRENT_COUNTRY === PASSPORT;
-  const destPoints    = DEST_CODES.map(d=>({code:d,name:DEST_NAMES[d]||d,coords:getCoords(d)})).filter(d=>d.coords);
 
   let arcT=0, selectedDest=null;
   let fwdArcRef=null;
 
   function buildStaticScene() {
     clearDots();
+    // 护照/当前位置
     if (originCoords) addDot(originCoords[0],originCoords[1], 0x888888, 0.014);
     if (currentCoords&&!isSame) addDot(currentCoords[0],currentCoords[1], 0xb8960c, 0.022);
-    destPoints.forEach(dest=>{
-      const col = isAlert(dest.code)?0xff4444:0xffffff;
-      const sel = selectedDest&&selectedDest.code===dest.code;
-      addDot(dest.coords[0],dest.coords[1], col, sel?0.030:0.020, {dest});
-      if(sel){  // glow ring
-        const gm=new THREE.Mesh(new THREE.SphereGeometry(0.048,14,14), new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.25,side:THREE.BackSide}));
-        gm.position.copy(ll2v(dest.coords[0],dest.coords[1],1.012)); earthGroup.add(gm); dotMeshes.push(gm);
+
+    // 全部目的地：已选 = 亮白，未选 = 暗灰，告警 = 红
+    ALL_DESTS.forEach(dest=>{
+      const isSelected = SELECTED_CODES.has(dest.code);
+      const isSel      = selectedDest && selectedDest.code === dest.code;
+      const hasAlert   = isAlert(dest.code);
+      let col, r;
+      if (isSel)         { col = hasAlert ? 0xff4444 : 0xffffff; r = 0.032; }
+      else if (isSelected) { col = hasAlert ? 0xff6666 : 0xffffff; r = 0.022; }
+      else               { col = hasAlert ? 0xff3333 : 0x556677; r = 0.014; }
+      addDot(dest.coords[0], dest.coords[1], col, r, {dest});
+      if (isSel) {
+        // 选中光晕
+        const gm = new THREE.Mesh(
+          new THREE.SphereGeometry(0.052, 14, 14),
+          new THREE.MeshBasicMaterial({color: col, transparent: true, opacity: 0.22, side: THREE.BackSide})
+        );
+        gm.position.copy(ll2v(dest.coords[0], dest.coords[1], 1.012));
+        earthGroup.add(gm); dotMeshes.push(gm);
       }
     });
-    // Past arc
-    if(originCoords&&currentCoords&&!isSame) addArc(originCoords[0],originCoords[1],currentCoords[0],currentCoords[1],0xffffff,0.28,1);
+    // 已走过的弧线（当前所在→出发国）
+    if (originCoords&&currentCoords&&!isSame)
+      addArc(originCoords[0],originCoords[1],currentCoords[0],currentCoords[1],0xffffff,0.28,1);
   }
   buildStaticScene();
+
+  // 暴露给外部（quickSelectDest 使用）
+  GLOBE_API.selectDest = (dest) => {
+    selectedDest = dest; arcT = 0;
+    buildStaticScene(); rebuildFwdArc(0);
+  };
 
   // ── Forward arc rebuild ───────────────────────────────
   function rebuildFwdArc(progress){
@@ -1072,7 +1084,30 @@ async function initGlobe() {
     isDragging=true; prevMX=e.clientX; prevMY=e.clientY; velX=velY=0;
     canvas.setPointerCapture(e.pointerId);
   });
+  const tooltip = document.getElementById('globe-tooltip');
   canvas.addEventListener('pointermove', e=>{
+    const cr = canvas.getBoundingClientRect();
+    mouse2.x = ((e.clientX-cr.left)/cr.width)*2-1;
+    mouse2.y = -((e.clientY-cr.top)/cr.height)*2+1;
+    if (!isDragging) {
+      // Hover tooltip
+      raycaster.setFromCamera(mouse2, camera);
+      const hov = raycaster.intersectObjects(dotMeshes.filter(m=>m.userData.dest));
+      if (hov.length) {
+        const d = hov[0].object.userData.dest;
+        const isChosen = SELECTED_CODES.has(d.code);
+        tooltip.textContent = d.name + (isChosen ? ' ★' : '');
+        tooltip.style.display = 'block';
+        tooltip.style.left = (e.clientX - cr.left + 10) + 'px';
+        tooltip.style.top  = (e.clientY - cr.top  - 24) + 'px';
+        canvas.style.cursor = 'pointer';
+      } else {
+        tooltip.style.display = 'none';
+        canvas.style.cursor = 'grab';
+      }
+    } else {
+      tooltip.style.display = 'none';
+    }
     if(!isDragging) return;
     const dx=e.clientX-prevMX, dy=e.clientY-prevMY;
     earthGroup.rotation.y+=dx*0.006; earthGroup.rotation.x+=dy*0.006;
@@ -1117,19 +1152,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── 快速选择目的地（按钮触发，不依赖地球仪点击） ──────
-const DEST_NAMES_MAP = {
-  nz:'新西兰', au:'澳大利亚', ca:'加拿大', uk:'英国',
-  us:'美国', pt:'葡萄牙', de:'德国', jp:'日本',
-  th:'泰国', ae:'阿联酋', sg:'新加坡', my:'马来西亚',
-};
 function quickSelectDest(code, label) {
   // 高亮按钮
   document.querySelectorAll('.dest-btn').forEach(b => b.classList.remove('active'));
   const btn = event.currentTarget;
   if (btn) btn.classList.add('active');
 
-  const name = DEST_NAMES_MAP[code] || label;
-  showRoutePanel({code, name, coords: null});
+  const name = DEST_NAMES[code] || label;
+  const coords = getCoords(code);
+  const dest = {code, name, coords};
+  // 更新地球仪选中状态（地球仪加载完成后才可用）
+  if (GLOBE_API.selectDest) GLOBE_API.selectDest(dest);
+  showRoutePanel(dest);
 }
 
 // ── 节点详情
