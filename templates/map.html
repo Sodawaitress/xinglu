@@ -1,0 +1,1329 @@
+{% extends 'base.html' %}
+{% block title %}地图 · 星路{% endblock %}
+
+{% block content %}
+
+{# ── 路线阶段定义 ── #}
+{% set STAGES = {
+  'skilled': [
+    ('doc',        '整理文件',   '护照、学历、工作证明'),
+    ('eoi',        '递交 EOI',   '技能移民意向书'),
+    ('invite',     '收到邀请',   '积分达线，收到邀请函'),
+    ('apply',      '递交申请',   '主申请及附件'),
+    ('processing', '审理中',     '等待决定，保持耐心'),
+    ('approved',   '获批',       '签证批准'),
+    ('landing',    '落地',       '你到了'),
+  ],
+  'nomad': [
+    ('research',  '选择目的地', '比较各国数字游民签证'),
+    ('proof',     '财务证明',   '收入证明、银行流水'),
+    ('apply',     '递交申请',   '提交签证申请'),
+    ('approved',  '获批',       '签证批准'),
+    ('depart',    '出发',       '抵达目的地'),
+    ('renew',     '续签或转换', '评估下一步选择'),
+  ],
+  'family': [
+    ('doc',        '收集材料', '关系证明、财务担保'),
+    ('sponsor',    '担保人申请', '担保方递交材料'),
+    ('apply',      '递交申请', '被担保方递交签证'),
+    ('processing', '审理中',   '等待决定'),
+    ('approved',   '获批',     '签证批准'),
+    ('reunion',    '团聚',     '家庭在一起'),
+  ],
+  'asylum': [
+    ('emergency',   '紧急保护',   '联系 UNHCR 或当地当局'),
+    ('unhcr',       'UNHCR 登记', '难民身份登记'),
+    ('claim',       '庇护申请',   '正式提交庇护声明'),
+    ('processing',  '审理中',     '等待庇护决定'),
+    ('decision',    '获得决定',   '批准、拒绝或上诉'),
+    ('settlement',  '安置',       '在庇护国定居'),
+  ],
+  'investment': [
+    ('research',   '研究选项', '比较各国投资移民'),
+    ('legal',      '法律咨询', '当地律师确认路线'),
+    ('invest',     '完成投资', '满足资金要求'),
+    ('apply',      '递交申请', '提交居留申请'),
+    ('processing', '审理中',   '等待决定'),
+    ('approved',   '获批',     '居留批准'),
+    ('settle',     '定居',     ''),
+  ],
+  'unknown': [
+    ('explore',  '了解选项', '看看有哪些路'),
+    ('decide',   '选择路线', '确定目标国和方式'),
+    ('prepare',  '准备起点', '整理你手上有什么'),
+    ('apply',    '开始申请', '迈出第一步'),
+    ('arrived',  '到达',     ''),
+  ],
+} %}
+
+{% set route_type = profile.route_type or 'unknown' %}
+{% set stages = STAGES.get(route_type, STAGES['unknown']) %}
+{% set current = profile.current_stage or stages[0][0] %}
+
+{# 找当前阶段的 index #}
+{% set ns = namespace(current_idx=0) %}
+{% for key, name, desc in stages %}
+  {% if key == current %}{% set ns.current_idx = loop.index0 %}{% endif %}
+{% endfor %}
+
+<div class="map-page">
+
+  {# ── 头部 ── #}
+  <div class="map-header">
+    <div>
+      <div class="map-route-label">
+        {% if route_type == 'skilled' %}💼 技术移民
+        {% elif route_type == 'nomad' %}💻 数字游民
+        {% elif route_type == 'family' %}👨‍👩‍👧 家庭团聚
+        {% elif route_type == 'asylum' %}🛡️ 庇护 / 保护
+        {% elif route_type == 'investment' %}🌱 投资 / 退休
+        {% else %}🔭 探索中
+        {% endif %}
+        <span class="map-passport">{{ profile.passport }} → {{ profile.destinations | replace('["','') | replace('"]','') | replace('"','') | replace(',','、') }}</span>
+      </div>
+      <div class="map-stage-now">现在：{{ current }}</div>
+    </div>
+    <a href="{{ url_for('radar_page') }}" class="btn-text" style="font-size:12px">资讯雷达 →</a>
+  </div>
+
+  {# ── 地球仪 ── #}
+  <div class="globe-wrap">
+    <canvas id="globe-canvas"></canvas>
+    <div id="globe-tooltip" class="globe-tooltip"></div>
+  </div>
+
+  {# ── 星轨地图 ── #}
+  <div class="starmap-wrap">
+    <div class="starmap">
+
+      {# SVG 连线 #}
+      <svg class="starmap-svg" xmlns="http://www.w3.org/2000/svg">
+        {% for i in range(stages|length - 1) %}
+          {% set pct_start = (i / (stages|length - 1)) * 100 %}
+          {% set pct_end   = ((i+1) / (stages|length - 1)) * 100 %}
+          <line
+            class="star-connector {% if i < ns.current_idx %}connector-done{% elif i == ns.current_idx %}connector-active{% else %}connector-future{% endif %}"
+            x1="{{ pct_start }}%" y1="50%"
+            x2="{{ pct_end }}%"   y2="50%"
+          />
+        {% endfor %}
+      </svg>
+
+      {# 星节点 #}
+      <div class="starmap-nodes">
+        {% for key, name, desc in stages %}
+        {% set idx = loop.index0 %}
+        {% set status = 'done' if idx < ns.current_idx else ('current' if idx == ns.current_idx else 'future') %}
+
+        <div class="star-node star-{{ status }}"
+             data-stage="{{ key }}"
+             onclick="selectStage('{{ key }}', '{{ name }}', '{{ desc }}')"
+             title="{{ name }}">
+          <div class="star-dot">
+            {% if status == 'done' %}★
+            {% elif status == 'current' %}◉
+            {% else %}·
+            {% endif %}
+          </div>
+          <div class="star-label">{{ name }}</div>
+          {% if status == 'current' %}
+          <div class="star-pulse"></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  {# ── 当前节点详情 ── #}
+  <div id="stage-detail" class="stage-detail">
+    <div class="stage-detail-name" id="detail-name">
+      {% for key, name, desc in stages %}{% if key == current %}{{ name }}{% endif %}{% endfor %}
+    </div>
+    <div class="stage-detail-desc" id="detail-desc">
+      {% for key, name, desc in stages %}{% if key == current %}{{ desc }}{% endif %}{% endfor %}
+    </div>
+    <div class="stage-detail-actions">
+      <form method="post" action="{{ url_for('set_stage') }}" style="display:inline">
+        <input type="hidden" name="stage" id="detail-stage-key" value="{{ current }}">
+        <button type="submit" class="btn-text" style="font-size:12px;color:var(--ink-muted)">
+          标记为当前阶段
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {# ── 我的旅程（历史探索记录） ── #}
+  <div id="journeys-section" style="display:none;margin-bottom:20px">
+    <div class="section-label" style="margin-bottom:10px">我的旅程</div>
+    <div id="journeys-list" class="journeys-list"></div>
+  </div>
+
+  {# ── 路线面板（点击地球仪目的地后展开） ── #}
+  <div id="route-panel" class="route-panel" style="display:none">
+    <div class="route-panel-header">
+      <div>
+        <span class="route-panel-dest" id="route-panel-dest">目的地</span>
+        <span class="route-panel-hint">选一条路，看看怎么走</span>
+      </div>
+      <button class="route-panel-close" onclick="closeRoutePanel()">×</button>
+    </div>
+    <div id="advisor-box" class="advisor-box" style="display:none">
+      <div class="advisor-label">顾问分析</div>
+      <div id="advisor-text" class="advisor-text">分析中…</div>
+    </div>
+    <div id="route-cards" class="route-cards"></div>
+  </div>
+
+  {# ── 今日任务面板 ── #}
+  <div id="task-panel" class="task-panel" style="display:none">
+    <div class="task-panel-header">
+      <div class="task-panel-route" id="task-route-name"></div>
+      <div class="task-progress-bar-wrap">
+        <div class="task-progress-bar" id="task-progress-bar"></div>
+      </div>
+      <div class="task-progress-label" id="task-progress-label"></div>
+    </div>
+    <div id="task-today" class="task-today">
+      <div class="task-today-label">今日任务</div>
+      <div class="task-today-title" id="task-title"></div>
+      <div class="task-today-desc" id="task-desc"></div>
+      <div class="task-today-gotcha" id="task-gotcha" style="display:none"></div>
+      <div class="task-today-actions">
+        <button class="btn-primary" id="task-done-btn" onclick="markTaskDone()">✓ 完成这一步</button>
+        <a id="task-doc-link" href="#" target="_blank" class="btn-text" style="font-size:12px">官方文档 →</a>
+      </div>
+    </div>
+    <div id="task-complete" class="task-complete" style="display:none">
+      <div style="font-size:24px;margin-bottom:8px">★</div>
+      <div style="font-family:Georgia,serif;font-size:16px;margin-bottom:4px">这条路走完了</div>
+      <div style="font-size:12px;color:var(--ink-muted)">所有任务已完成，准备好迎接下一个里程碑了</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<style>
+/* ── 地图页专属样式 ── */
+.map-page { padding: 28px 24px 60px; max-width: 900px; margin: 0 auto; }
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--rule-light);
+}
+.map-route-label {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.map-passport {
+  font-weight: 400;
+  color: var(--ink-muted);
+  margin-left: 8px;
+}
+.map-stage-now {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-family: -apple-system, sans-serif;
+}
+
+/* ── 星轨容器 ── */
+.starmap-wrap {
+  background: #0d0d14;
+  border-radius: 8px;
+  padding: 48px 32px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+/* 背景小星点 */
+.starmap-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.15) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 60px 60px, 30px 30px;
+  background-position: 0 0, 15px 15px;
+  pointer-events: none;
+}
+
+.starmap {
+  position: relative;
+  height: 100px;
+}
+
+/* SVG 连线 */
+.starmap-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.star-connector {
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.connector-done   { stroke: rgba(255,230,120,.7); }
+.connector-active { stroke: rgba(255,230,120,.4); stroke-dasharray: 4 3; }
+.connector-future { stroke: rgba(255,255,255,.12); stroke-dasharray: 2 4; }
+
+/* 节点行 */
+.starmap-nodes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.star-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: transform .15s;
+  z-index: 2;
+}
+.star-node:hover { transform: scale(1.15); }
+
+/* 星点 */
+.star-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  position: relative;
+}
+.star-done .star-dot {
+  background: rgba(255,220,80,.12);
+  color: #ffe066;
+  box-shadow: 0 0 8px 3px rgba(255,220,80,.3);
+}
+.star-current .star-dot {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  font-size: 20px;
+  box-shadow: 0 0 16px 6px rgba(255,255,255,.25);
+  animation: pulse-star 2s ease-in-out infinite;
+}
+.star-future .star-dot {
+  background: transparent;
+  color: rgba(255,255,255,.3);
+  font-size: 20px;
+}
+
+/* 标签 */
+.star-label {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  white-space: nowrap;
+  letter-spacing: .02em;
+}
+.star-done    .star-label { color: rgba(255,220,80,.8); }
+.star-current .star-label { color: #fff; font-weight: 600; }
+.star-future  .star-label { color: rgba(255,255,255,.3); }
+
+/* 当前节点脉冲环 */
+.star-pulse {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.3);
+  animation: pulse-ring 2s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse-star {
+  0%, 100% { box-shadow: 0 0 10px 4px rgba(255,255,255,.2); }
+  50%       { box-shadow: 0 0 24px 10px rgba(255,255,255,.4); }
+}
+@keyframes pulse-ring {
+  0%   { transform: translate(-50%,-50%) scale(1);   opacity: .6; }
+  100% { transform: translate(-50%,-50%) scale(1.8); opacity: 0; }
+}
+
+/* ── 节点风险动画（政策变动时持续闪烁） ── */
+.star-closing {
+  animation: star-flicker 3s ease-in-out infinite;
+}
+@keyframes star-flicker {
+  0%   { opacity: 1; }
+  15%  { opacity: .5; filter: brightness(.5); }
+  25%  { opacity: .9; filter: brightness(1.3); }
+  40%  { opacity: .3; filter: brightness(.3) blur(0.5px); }
+  55%  { opacity: .8; filter: brightness(1); }
+  70%  { opacity: .4; filter: brightness(.4); }
+  85%  { opacity: .7; }
+  100% { opacity: 1; }
+}
+
+/* 警示角标 */
+.star-alert-dot {
+  position: absolute;
+  top: -3px; right: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ff4444;
+  box-shadow: 0 0 6px 2px rgba(255,68,68,.6);
+  animation: alert-pulse 1.5s ease-in-out infinite;
+}
+@keyframes alert-pulse {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(255,68,68,.5); }
+  50%       { box-shadow: 0 0 10px 4px rgba(255,68,68,.9); }
+}
+
+/* ── 详情区 ── */
+.stage-detail {
+  border: 1px solid var(--rule-light);
+  padding: 20px 24px;
+  background: var(--paper-2);
+  margin-bottom: 28px;
+}
+.stage-detail-name {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.stage-detail-desc {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+.stage-detail-actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule-light);
+}
+
+.map-multidest {
+  border-left: 2px solid var(--rule-light);
+  padding: 12px 16px;
+  margin-top: 16px;
+}
+
+/* ── 地球仪容器 ── */
+.globe-wrap {
+  background: #0a0a12;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  height: 340px;
+}
+#globe-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#globe-canvas:active { cursor: grabbing; }
+.globe-tooltip {
+  position: absolute;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  display: none;
+}
+
+/* ── 我的旅程 ── */
+.journeys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.journey-card {
+  border: 1px solid var(--rule-light);
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color .15s;
+  font-family: -apple-system, sans-serif;
+}
+.journey-card:hover { border-color: var(--ink-muted); }
+.journey-card-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.journey-card-meta { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+.journey-card-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.journey-pct {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 32px;
+  text-align: right;
+}
+.journey-status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.jstatus-active    { background: #00873a; }
+.jstatus-exploring { background: var(--ink-muted); }
+.jstatus-paused    { background: #c05000; }
+.jstatus-completed { background: #ffe066; }
+.jstatus-abandoned { background: var(--rule-light); }
+
+/* ── 顾问框 ── */
+.advisor-box {
+  margin: 0 20px 0;
+  padding: 12px 16px;
+  border-left: 2px solid var(--ink-muted);
+  background: var(--paper);
+}
+.advisor-label {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+.advisor-text {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.65;
+}
+
+/* ── 路线面板 ── */
+.route-panel {
+  border: 1px solid var(--rule-light);
+  background: var(--paper-2);
+  margin-bottom: 20px;
+  animation: slide-in .2s ease;
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.route-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--rule-light);
+}
+.route-panel-dest {
+  font-family: Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-right: 8px;
+}
+.route-panel-hint {
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.route-panel-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.route-cards {
+  padding: 12px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.route-card {
+  border: 1px solid var(--rule-light);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.route-card:hover { border-color: var(--ink-muted); background: var(--paper); }
+.route-card.selected { border-color: var(--ink); background: var(--paper); }
+.route-card-left {}
+.route-card-name {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.route-card-meta {
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.route-card-status {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 2px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.status-open       { background: rgba(0,160,60,.12); color: #00873a; }
+.status-restricted { background: rgba(220,100,0,.12); color: #c05000; }
+.status-closed     { background: rgba(200,0,0,.1);   color: #b00; }
+.route-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.route-card-signal {
+  font-size: 10px;
+  color: #c05000;
+  margin-top: 3px;
+}
+.mini-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid var(--rule-light);
+}
+.mini-stage {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.mini-arrow {
+  font-size: 9px;
+  color: var(--ink-faint);
+}
+
+/* ── 今日任务面板 ── */
+.task-panel {
+  border: 1px solid var(--rule-light);
+  background: var(--paper-2);
+  margin-bottom: 28px;
+  animation: slide-in .2s ease;
+}
+.task-panel-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--rule-light);
+}
+.task-panel-route {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+.task-progress-bar-wrap {
+  background: var(--rule-light);
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.task-progress-bar {
+  height: 100%;
+  background: var(--ink);
+  border-radius: 2px;
+  transition: width .4s ease;
+}
+.task-progress-label {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+.task-today {
+  padding: 20px 20px 20px;
+}
+.task-today-label {
+  font-family: -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+.task-today-title {
+  font-family: Georgia, serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.task-today-desc {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.task-today-gotcha {
+  background: rgba(200,80,0,.07);
+  border-left: 2px solid rgba(200,80,0,.4);
+  padding: 8px 12px;
+  font-family: -apple-system, sans-serif;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.task-today-gotcha::before {
+  content: '⚠ 注意：';
+  font-weight: 600;
+  color: #c05000;
+}
+.task-today-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  padding: 8px 18px;
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .8; }
+.task-complete {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--ink);
+  font-family: -apple-system, sans-serif;
+}
+
+/* ── 完成动画 ── */
+@keyframes node-burst {
+  0%   { transform: scale(1);   opacity: 1; }
+  40%  { transform: scale(2.2); opacity: .9; box-shadow: 0 0 30px 12px rgba(255,230,80,.7); }
+  100% { transform: scale(1);   opacity: 1; box-shadow: 0 0 8px 3px rgba(255,220,80,.3); }
+}
+.node-burst { animation: node-burst .5s ease-out forwards; }
+
+@keyframes progress-fill {
+  from { width: var(--from); }
+  to   { width: var(--to); }
+}
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 32px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 999;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js"></script>
+<script>
+// ── 国家坐标表 [lat, lon] ──────────────────────────────
+const COORDS = {
+  // 常见护照国
+  '中国': [35, 105], 'china': [35, 105], 'cn': [35, 105],
+  '美国': [38, -97], 'usa': [38, -97], 'united states': [38, -97], 'us': [38,-97],
+  '英国': [54, -2], 'uk': [54, -2], 'united kingdom': [54,-2],
+  '澳大利亚': [-25, 134], 'australia': [-25, 134], 'au': [-25,134],
+  '新西兰': [-41, 174], 'new zealand': [-41, 174], 'nz': [-41,174],
+  '加拿大': [56, -106], 'canada': [56, -106], 'ca': [56,-106],
+  '日本': [36, 138], 'japan': [36, 138], 'jp': [36,138],
+  '韩国': [36, 128], 'south korea': [36, 128], 'kr': [36,128],
+  '法国': [46, 2], 'france': [46, 2], 'fr': [46,2],
+  '德国': [51, 10], 'germany': [51, 10], 'de': [51,10],
+  '印度': [20, 78], 'india': [20, 78], 'in': [20,78],
+  '巴西': [-15, -47], 'brazil': [-15, -47], 'br': [-15,-47],
+  '俄罗斯': [60, 90], 'russia': [60, 90], 'ru': [60,90],
+  '叙利亚': [35, 38], 'syria': [35, 38], 'sy': [35,38],
+  '阿富汗': [33, 65], 'afghanistan': [33, 65], 'af': [33,65],
+  '伊朗': [32, 53], 'iran': [32, 53], 'ir': [32,53],
+  '缅甸': [17, 96], 'myanmar': [17, 96], 'mm': [17,96],
+  // 目的地国
+  'pt': [39, -8], 'portugal': [39, -8], '葡萄牙': [39,-8],
+  'th': [15, 101], 'thailand': [15, 101], '泰国': [15,101],
+  'ae': [24, 54], 'uae': [24, 54], 'dubai': [25,55], '阿联酋': [24,54],
+  'other': null, 'unknown': null,
+};
+
+function getCoords(name) {
+  if (!name) return null;
+  const k = name.toLowerCase().trim();
+  return COORDS[k] || null;
+}
+
+// 目的地代码 → 国家名
+const DEST_NAMES = {
+  nz:'新西兰', au:'澳大利亚', ca:'加拿大', uk:'英国',
+  us:'美国', pt:'葡萄牙', de:'德国', jp:'日本',
+  th:'泰国', ae:'阿联酋', other:'其他', unknown:'待定',
+};
+
+// ── 从 Jinja 拿数据 ───────────────────────────────────
+const PASSPORT        = {{ profile.passport | tojson }};
+const CURRENT_COUNTRY = {{ profile.current_country | tojson }};
+const DEST_CODES      = {{ destinations | tojson }};
+
+// ── Three.js 地球仪 ────────────────────────────────────
+async function initGlobe() {
+  const canvas = document.getElementById('globe-canvas');
+  const wrap   = canvas.parentElement;
+  const rect   = wrap.getBoundingClientRect();
+  const W = rect.width  || 800;
+  const H = rect.height || 340;
+
+  // ── Renderer ──────────────────────────────────────────
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x0a0a12, 1);
+
+  // ── Scene & Camera ────────────────────────────────────
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+  camera.position.z = 2.65;
+
+  // ── Lighting ──────────────────────────────────────────
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+  sun.position.set(5, 3, 5);
+  scene.add(sun);
+
+  // ── Earth texture via D3 equirectangular render ───────
+  let earthTexture = null;
+  try {
+    const world   = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+    const land    = topojson.feature(world, world.objects.land);
+    const borders = topojson.mesh(world, world.objects.countries, (a, b) => a !== b);
+    const TW = 2048, TH = 1024;
+    const tc   = document.createElement('canvas');
+    tc.width = TW; tc.height = TH;
+    const tctx = tc.getContext('2d');
+    const eq   = d3.geoEquirectangular().scale(TH / Math.PI).translate([TW/2, TH/2]);
+    const tp   = d3.geoPath(eq, tctx);
+    tctx.fillStyle = '#0a0a12'; tctx.fillRect(0, 0, TW, TH);
+    tctx.beginPath(); tp(d3.geoGraticule()()); tctx.strokeStyle='rgba(255,255,255,.04)'; tctx.lineWidth=0.5; tctx.stroke();
+    tctx.beginPath(); tp(land);    tctx.fillStyle='#c4bdb3'; tctx.fill();
+    tctx.beginPath(); tp(borders); tctx.strokeStyle='rgba(10,10,20,.4)'; tctx.lineWidth=0.6; tctx.stroke();
+    earthTexture = new THREE.CanvasTexture(tc);
+  } catch(e) { console.warn('Globe texture failed', e); }
+
+  // ── Earth sphere ──────────────────────────────────────
+  const earthGroup = new THREE.Group();
+  scene.add(earthGroup);
+
+  const earthMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 80, 80),
+    new THREE.MeshPhongMaterial({ map: earthTexture, color: earthTexture ? 0xffffff : 0x1a1a2e, specular: 0x111111, shininess: 6 })
+  );
+  earthGroup.add(earthMesh);
+
+  // ── Atmosphere glow (vertex shader) ──────────────────
+  scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(1.10, 64, 64),
+    new THREE.ShaderMaterial({
+      vertexShader:   `varying vec3 vNormal; void main(){ vNormal=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+      fragmentShader: `varying vec3 vNormal; void main(){ float i=pow(.72-dot(vNormal,vec3(0,0,1)),4.); gl_FragColor=vec4(.18,.35,1.,1.)*i; }`,
+      blending: THREE.AdditiveBlending, side: THREE.BackSide, transparent: true,
+    })
+  ));
+
+  // ── Helper: lat/lon → unit sphere 3D ─────────────────
+  function ll2v(lat, lon, r=1) {
+    const ph = (90-lat)*Math.PI/180, th = (lon+180)*Math.PI/180;
+    return new THREE.Vector3(-r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph), r*Math.sin(ph)*Math.sin(th));
+  }
+
+  // ── Helper: great circle arc pts with altitude lift ──
+  function arcPts(lat1,lon1,lat2,lon2, steps=80, lift=0.26) {
+    const a=ll2v(lat1,lon1), b=ll2v(lat2,lon2), pts=[];
+    for(let i=0;i<=steps;i++){
+      const t=i/steps;
+      pts.push(new THREE.Vector3().lerpVectors(a,b,t).normalize().multiplyScalar(1+lift*Math.sin(t*Math.PI)));
+    }
+    return pts;
+  }
+
+  // ── Arc management ────────────────────────────────────
+  let arcObjects=[], activeFwdArc=null;
+  function clearArcs() {
+    arcObjects.forEach(o=>{earthGroup.remove(o);o.geometry.dispose();o.material.dispose();});
+    arcObjects=[]; activeFwdArc=null;
+  }
+  function addArc(lat1,lon1,lat2,lon2, color=0xffffff, opacity=0.6, progress=1) {
+    const all=arcPts(lat1,lon1,lat2,lon2,80);
+    const pts=all.slice(0,Math.max(2,Math.round(all.length*progress)));
+    const geo=new THREE.BufferGeometry().setFromPoints(pts);
+    // Inner bright line
+    const line=new THREE.Line(geo, new THREE.LineBasicMaterial({color,transparent:true,opacity}));
+    // Outer glow (slightly thicker, more transparent)
+    const glowGeo=new THREE.BufferGeometry().setFromPoints(pts);
+    const glow=new THREE.Line(glowGeo, new THREE.LineBasicMaterial({color,transparent:true,opacity:opacity*0.3}));
+    glow.scale.setScalar(1.004);
+    earthGroup.add(line); earthGroup.add(glow);
+    arcObjects.push(line,glow);
+    return {line,glow,allPts:all};
+  }
+
+  // ── Dot management ────────────────────────────────────
+  let dotMeshes=[];
+  function clearDots(){dotMeshes.forEach(m=>earthGroup.remove(m));dotMeshes=[];}
+  function addDot(lat,lon,color,r=0.018,ud={}){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(r,14,14), new THREE.MeshBasicMaterial({color}));
+    m.position.copy(ll2v(lat,lon,1.012)); m.userData=ud;
+    earthGroup.add(m); dotMeshes.push(m); return m;
+  }
+
+  // ── Alert helper ──────────────────────────────────────
+  let alertKeys={};
+  fetch('/api/map/alerts').then(r=>r.json()).then(a=>{alertKeys=a;}).catch(()=>{});
+  function isAlert(code){
+    const KEYS={nz:['eoi','invite','apply','processing'],au:['apply','processing'],ca:['eoi','invite'],uk:['apply','processing'],us:['apply','processing','approved']};
+    return (KEYS[code]||[]).some(k=>alertKeys[k]);
+  }
+
+  // ── Initial dots & arcs ───────────────────────────────
+  const originCoords  = getCoords(PASSPORT);
+  const currentCoords = getCoords(CURRENT_COUNTRY);
+  const isSame        = CURRENT_COUNTRY === PASSPORT;
+  const destPoints    = DEST_CODES.map(d=>({code:d,name:DEST_NAMES[d]||d,coords:getCoords(d)})).filter(d=>d.coords);
+
+  let arcT=0, selectedDest=null;
+  let fwdArcRef=null;
+
+  function buildStaticScene() {
+    clearDots();
+    if (originCoords) addDot(originCoords[0],originCoords[1], 0x888888, 0.014);
+    if (currentCoords&&!isSame) addDot(currentCoords[0],currentCoords[1], 0xb8960c, 0.022);
+    destPoints.forEach(dest=>{
+      const col = isAlert(dest.code)?0xff4444:0xffffff;
+      const sel = selectedDest&&selectedDest.code===dest.code;
+      addDot(dest.coords[0],dest.coords[1], col, sel?0.030:0.020, {dest});
+      if(sel){  // glow ring
+        const gm=new THREE.Mesh(new THREE.SphereGeometry(0.048,14,14), new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.25,side:THREE.BackSide}));
+        gm.position.copy(ll2v(dest.coords[0],dest.coords[1],1.012)); earthGroup.add(gm); dotMeshes.push(gm);
+      }
+    });
+    // Past arc
+    if(originCoords&&currentCoords&&!isSame) addArc(originCoords[0],originCoords[1],currentCoords[0],currentCoords[1],0xffffff,0.28,1);
+  }
+  buildStaticScene();
+
+  // ── Forward arc rebuild ───────────────────────────────
+  function rebuildFwdArc(progress){
+    if(fwdArcRef){ earthGroup.remove(fwdArcRef.line); fwdArcRef.line.geometry.dispose();
+      earthGroup.remove(fwdArcRef.glow); fwdArcRef.glow.geometry.dispose(); fwdArcRef=null; }
+    if(!selectedDest) return;
+    const from=(!isSame&&currentCoords)?currentCoords:originCoords;
+    if(!from) return;
+    const col=isAlert(selectedDest.code)?0xff4444:0xffffff;
+    fwdArcRef=addArc(from[0],from[1],selectedDest.coords[0],selectedDest.coords[1],col,0.75,progress);
+  }
+
+  // ── Raycaster ─────────────────────────────────────────
+  const raycaster=new THREE.Raycaster();
+  const mouse2=new THREE.Vector2();
+  raycaster.params.Line={threshold:0.05};
+
+  // ── Drag & click ──────────────────────────────────────
+  let isDragging=false, prevMX=0, prevMY=0, velX=0.001, velY=0;
+
+  canvas.addEventListener('pointerdown', e=>{
+    const cr=canvas.getBoundingClientRect();
+    mouse2.x= ((e.clientX-cr.left)/cr.width)*2-1;
+    mouse2.y=-((e.clientY-cr.top)/cr.height)*2+1;
+    raycaster.setFromCamera(mouse2,camera);
+    const hits=raycaster.intersectObjects(dotMeshes.filter(m=>m.userData.dest));
+    if(hits.length){
+      const dest=hits[0].object.userData.dest;
+      selectedDest=dest; arcT=0;
+      buildStaticScene(); rebuildFwdArc(0);
+      showRoutePanel(dest);
+      return;
+    }
+    isDragging=true; prevMX=e.clientX; prevMY=e.clientY; velX=velY=0;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if(!isDragging) return;
+    const dx=e.clientX-prevMX, dy=e.clientY-prevMY;
+    earthGroup.rotation.y+=dx*0.006; earthGroup.rotation.x+=dy*0.006;
+    earthGroup.rotation.x=Math.max(-1,Math.min(1,earthGroup.rotation.x));
+    prevMX=e.clientX; prevMY=e.clientY; velX=dx*0.006; velY=dy*0.006;
+  });
+  canvas.addEventListener('pointerup',()=>{isDragging=false;});
+
+  // ── Animate ───────────────────────────────────────────
+  let tick=0;
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!isDragging){
+      earthGroup.rotation.y+=velX; velX*=0.96;
+      if(Math.abs(velX)<0.0003) velX=0.0012;
+      earthGroup.rotation.x+=velY*0.5; velY*=0.88;
+    }
+    // Arc growth
+    if(selectedDest&&arcT<1){ arcT=Math.min(arcT+0.016,1); rebuildFwdArc(arcT); }
+    // Pulse selected dot
+    dotMeshes.forEach(m=>{
+      if(m.userData.dest&&selectedDest&&m.userData.dest.code===selectedDest.code){
+        const s=1+0.18*Math.sin(tick*0.08); m.scale.setScalar(s);
+      }
+    });
+    tick++;
+    renderer.render(scene,camera);
+  }
+  animate();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  requestAnimationFrame(async () => {
+    try {
+      await initGlobe();
+    } catch(e) {
+      console.error('Globe init error:', e);
+      const wrap = document.querySelector('.globe-wrap');
+      if (wrap) wrap.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.35);font-size:13px;font-family:monospace">地球仪加载失败 · ${e.message}</div>`;
+    }
+  });
+});
+
+// ── 节点详情
+function selectStage(key, name, desc) {
+  document.getElementById('detail-name').textContent = name;
+  document.getElementById('detail-desc').textContent = desc || '点击「标记为当前阶段」更新你的进度。';
+  document.getElementById('detail-stage-key').value = key;
+
+  // 如果这个节点有告警，显示相关新闻
+  if (window._alerts && window._alerts[key]) {
+    const headlines = window._alerts[key];
+    const el = document.getElementById('detail-desc');
+    el.innerHTML = (desc ? desc + '<br><br>' : '') +
+      '<span style="color:#c62828;font-size:11px;font-weight:600">⚠ 相关动态：</span><br>' +
+      headlines.map(h => `<span style="font-size:11px;color:#666">· ${h}</span>`).join('<br>');
+  }
+}
+
+// 页面加载后拉告警，触发动画
+async function loadAlerts() {
+  try {
+    const resp = await fetch('/api/map/alerts');
+    const alerts = await resp.json();
+    window._alerts = alerts;
+
+    for (const [stageKey, headlines] of Object.entries(alerts)) {
+      // 找到对应节点（data-stage 属性）
+      const node = document.querySelector(`[data-stage="${stageKey}"]`);
+      if (!node) continue;
+
+      // 加上闪烁消失动画
+      node.classList.add('star-closing');
+
+      // 加警示角标
+      const badge = document.createElement('div');
+      badge.className = 'star-alert-dot';
+      badge.title = headlines[0] || '';
+      node.querySelector('.star-dot').appendChild(badge);
+    }
+  } catch(e) {
+    // 静默失败
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadAlerts();
+  loadJourneys();
+});
+
+// ── 路线面板 ────────────────────────────────────────────
+let _currentTaskId  = null;
+let _currentRouteId = null;
+
+async function showRoutePanel(dest) {
+  const panel = document.getElementById('route-panel');
+  const cards = document.getElementById('route-cards');
+  const advisorBox  = document.getElementById('advisor-box');
+  const advisorText = document.getElementById('advisor-text');
+  document.getElementById('route-panel-dest').textContent = dest.name;
+  panel.style.display = 'block';
+  cards.innerHTML = '<div style="font-size:12px;color:var(--ink-muted);padding:8px 0">加载路线…</div>';
+
+  // 顾问：异步，不阻塞路线加载
+  advisorBox.style.display = 'block';
+  advisorText.textContent = '分析中…';
+  fetch('/api/advisor', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({dest: dest.code}),
+  }).then(r => r.json()).then(d => {
+    advisorText.textContent = d.advice || '暂无分析';
+  }).catch(() => { advisorBox.style.display = 'none'; });
+
+  try {
+    const resp = await fetch(`/api/map/routes?dest=${dest.code}`);
+    const routes = await resp.json();
+    if (!routes.length) {
+      cards.innerHTML = '<div style="font-size:12px;color:var(--ink-muted);padding:8px 0">暂无路线数据</div>';
+      return;
+    }
+    cards.innerHTML = routes.map(r => {
+      const months = r.typical_months_min === r.typical_months_max
+        ? `${r.typical_months_min} 个月`
+        : `${r.typical_months_min}–${r.typical_months_max} 个月`;
+      const statusClass = `status-${r.status}`;
+      const statusText = r.status === 'open' ? '开放' : r.status === 'restricted' ? '受限' : '暂停';
+      const signal = r.signal ? `<div class="route-card-signal">${r.signal}</div>` : '';
+      // 迷你时间线：把每个 requirement 名称缩短为前4字，用 → 连接
+      const timeline = (r.stages || []).map((s, i) => {
+        const short = s.length > 5 ? s.slice(0, 5) + '…' : s;
+        return `<span class="mini-stage">${short}</span>${i < r.stages.length - 1 ? '<span class="mini-arrow">→</span>' : ''}`;
+      }).join('');
+      return `
+        <div class="route-card" onclick="selectRoute('${r.id}', '${r.name.replace(/'/g,"\\'")}', this)">
+          <div class="route-card-left" style="flex:1;min-width:0">
+            <div class="route-card-top">
+              <div class="route-card-name">${r.name}</div>
+              <span class="route-card-status ${statusClass}">${statusText}</span>
+            </div>
+            <div class="route-card-meta">${r.visa_name || ''} · 约 ${months}</div>
+            ${timeline ? `<div class="mini-timeline">${timeline}</div>` : ''}
+            ${signal}
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    cards.innerHTML = '<div style="font-size:12px;color:var(--ink-muted);padding:8px 0">加载失败</div>';
+  }
+}
+
+function closeRoutePanel() {
+  document.getElementById('route-panel').style.display = 'none';
+}
+
+async function selectRoute(routeId, routeName, cardEl) {
+  // 高亮选中的卡片
+  document.querySelectorAll('.route-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+  _currentRouteId = routeId;
+
+  // 记录选择（开放世界：create/activate journey）
+  await fetch('/api/map/select-route', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({route_id: routeId, dest: routeId.split('_')[0] + '_' + routeId.split('_')[1]})
+  });
+
+  // 拉今日任务
+  await loadTaskPanel(routeId, routeName);
+}
+
+async function loadTaskPanel(routeId, routeName) {
+  try {
+    const resp = await fetch(`/api/tasks/next/${routeId}`);
+    const data = await resp.json();
+    const panel = document.getElementById('task-panel');
+    panel.style.display = 'block';
+
+    document.getElementById('task-route-name').textContent = routeName;
+    const pct = data.progress_pct || 0;
+    document.getElementById('task-progress-bar').style.width = pct + '%';
+    document.getElementById('task-progress-label').textContent = `已完成 ${pct}%`;
+
+    const task = data.task;
+    if (!task) {
+      document.getElementById('task-today').style.display = 'none';
+      document.getElementById('task-complete').style.display = 'block';
+      // 标记旅程完成
+      fetch('/api/map/complete-journey', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({route_id: routeId})
+      });
+      loadJourneys(); // 刷新旅程历史，显示「已完成」状态
+      return;
+    }
+
+    document.getElementById('task-today').style.display = 'block';
+    document.getElementById('task-complete').style.display = 'none';
+    _currentTaskId = task.id;
+
+    document.getElementById('task-title').textContent = task.title;
+    document.getElementById('task-desc').textContent = task.description || '';
+
+    const gotchaEl = document.getElementById('task-gotcha');
+    if (task.gotcha) {
+      gotchaEl.style.display = 'block';
+      gotchaEl.textContent = task.gotcha;
+    } else {
+      gotchaEl.style.display = 'none';
+    }
+
+    const linkEl = document.getElementById('task-doc-link');
+    if (task.doc_url) {
+      linkEl.href = task.doc_url;
+      linkEl.style.display = 'inline';
+    } else {
+      linkEl.style.display = 'none';
+    }
+
+    // scroll into view
+    panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  } catch(e) {
+    console.error('loadTaskPanel error', e);
+  }
+}
+
+// ── 旅程历史 ─────────────────────────────────────────
+const STATUS_LABEL = {
+  active: '进行中', exploring: '探索中', paused: '已暂停',
+  completed: '已完成', abandoned: '已放弃', blocked: '受阻',
+};
+
+async function loadJourneys() {
+  try {
+    const resp = await fetch('/api/map/journeys');
+    const journeys = await resp.json();
+    if (!journeys.length) return;
+
+    const section = document.getElementById('journeys-section');
+    const list = document.getElementById('journeys-list');
+    section.style.display = 'block';
+
+    list.innerHTML = journeys.map(j => {
+      const statusLabel = STATUS_LABEL[j.status] || j.status;
+      const dotClass = `jstatus-${j.status}`;
+      return `
+        <div class="journey-card" onclick="resumeJourney('${j.route_id}', '${j.route_name.replace(/'/g,"\\'")}')">
+          <div>
+            <div class="journey-card-name">${j.route_name}</div>
+            <div class="journey-card-meta">${statusLabel} · ${j.category || ''}</div>
+          </div>
+          <div class="journey-card-right">
+            <span class="journey-pct">${j.progress_pct}%</span>
+            <span class="journey-status-dot ${dotClass}" title="${statusLabel}"></span>
+          </div>
+        </div>`;
+    }).join('');
+
+    // 自动恢复第一条 active 旅程
+    const active = journeys.find(j => j.status === 'active');
+    if (active) {
+      _currentRouteId = active.route_id;
+      await loadTaskPanel(active.route_id, active.route_name);
+    }
+  } catch(e) {}
+}
+
+async function resumeJourney(routeId, routeName) {
+  _currentRouteId = routeId;
+  // 滚动到任务面板
+  await loadTaskPanel(routeId, routeName);
+  document.getElementById('task-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function showToast(msg, duration = 2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+async function markTaskDone() {
+  if (!_currentTaskId || !_currentRouteId) return;
+  const btn = document.getElementById('task-done-btn');
+  btn.disabled = true;
+  btn.textContent = '…';
+
+  try {
+    const res = await fetch('/api/tasks/done', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({task_id: _currentTaskId, done: true, route_id: _currentRouteId})
+    });
+    const data = await res.json();
+    const newPct = data.progress_pct || 0;
+
+    // ── 进度条动画 ──────────────────────────────────────
+    const bar = document.getElementById('task-progress-bar');
+    const oldPct = parseFloat(bar.style.width) || 0;
+    bar.style.setProperty('--from', oldPct + '%');
+    bar.style.setProperty('--to',   newPct + '%');
+    bar.style.animation = 'none';
+    bar.offsetHeight;  // reflow
+    bar.style.animation = 'progress-fill .6s ease-out forwards';
+    bar.style.width = newPct + '%';
+    document.getElementById('task-progress-label').textContent = `已完成 ${newPct}%`;
+
+    // ── 星轨节点爆光 ────────────────────────────────────
+    // 找 star-current 节点，触发 burst 动画
+    const currentNode = document.querySelector('.star-current .star-dot');
+    if (currentNode) {
+      currentNode.classList.remove('node-burst');
+      currentNode.offsetHeight;
+      currentNode.classList.add('node-burst');
+      setTimeout(() => currentNode.classList.remove('node-burst'), 600);
+    }
+
+    // ── Toast 反馈 ──────────────────────────────────────
+    const msgs = [
+      '今天的任务完成了。你比昨天的自己更近了一步。',
+      `你已完成这条路线的 ${newPct}%`,
+      '走一步是一步，继续。',
+    ];
+    showToast(msgs[Math.floor(Math.random() * msgs.length)]);
+
+    // ── 加载下一个任务 ──────────────────────────────────
+    const routeName = document.getElementById('task-route-name').textContent;
+    await loadTaskPanel(_currentRouteId, routeName);
+
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✓ 完成这一步';
+  }
+}
+</script>
+
+{% endblock %}

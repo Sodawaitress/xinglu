@@ -1,0 +1,27 @@
+# Secrets
+.env
+*.env
+
+# Database
+data/
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Temp files
+/tmp/
+*.log
+
+# macOS
+.DS_Store

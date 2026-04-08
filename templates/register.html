@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}注册 · 星路{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-title">开始你的路</div>
+  <div class="auth-sub">注册后设置你的起点和方向，地图就是你的。</div>
+  <form method="post">
+    <div class="form-group">
+      <label class="form-label">邮箱</label>
+      <input type="email" name="email" class="form-input" required autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">密码</label>
+      <input type="password" name="password" class="form-input" required minlength="6">
+    </div>
+    <button type="submit" class="btn-primary" style="width:100%;margin-top:8px">注册</button>
+  </form>
+  <a href="{{ url_for('login') }}" class="form-link">已有账号？登录 →</a>
+</div>
+{% endblock %}

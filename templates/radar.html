@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% block title %}雷达 · 星路{% endblock %}
+
+{% block content %}
+
+{# 地区→目的地代码映射 #}
+{% set DEST_REGION = {
+  'nz': ['🇳🇿 新西兰', 'new zealand', 'nz', 'inz'],
+  'au': ['🇦🇺 澳大利亚', 'australia', 'au'],
+  'ca': ['🇨🇦 加拿大', 'canada', 'ca', 'ircc'],
+  'uk': ['🇬🇧 英国', 'uk', 'united kingdom'],
+  'us': ['🇺🇸 美国', 'us', 'united states', 'uscis'],
+  'pt': ['🇵🇹 葡萄牙', 'portugal', 'd7', 'nhr'],
+  'de': ['🇩🇪 德国', 'germany', 'chancenkarte'],
+  'jp': ['🇯🇵 日本', 'japan'],
+  'th': ['🇹🇭 泰国', 'thailand', 'ltr'],
+  'ae': ['🇦🇪 阿联酋', 'uae', 'dubai'],
+} %}
+
+{% set user_dests = [] %}
+{% if profile and profile.destinations %}
+  {% set raw = profile.destinations | replace('["','') | replace('"]','') | replace('"','') %}
+  {% for d in raw.split(',') %}
+    {% if d.strip() %}{% set _ = user_dests.append(d.strip()) %}{% endif %}
+  {% endfor %}
+{% endif %}
+
+<div class="radar-page">
+
+  {# ── 头部 ── #}
+  <div class="radar-header">
+    <div>
+      <div class="section-label">资讯雷达</div>
+      <h2 class="radar-title">
+        {% if latest %}{{ latest.week }}{% else %}暂无数据{% endif %}
+      </h2>
+      {% if latest %}
+      <div class="radar-meta">上次更新 {{ latest.created_at[:16].replace('T',' ') }}</div>
+      {% endif %}
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="job-status" style="font-size:12px;font-family:-apple-system,sans-serif;color:var(--ink-muted)"></div>
+      <button id="btn-run" onclick="runPipeline()" class="btn-primary" style="font-size:13px">
+        ⟳ 立即抓取
+      </button>
+    </div>
+  </div>
+
+  <div id="run-log" class="run-log" style="display:none"></div>
+
+  {% if raw_data %}
+
+  {# ── 你的路线相关 ── #}
+  {% if user_dests and 'unknown' not in user_dests %}
+  <div class="radar-section">
+    <div class="section-label">与你的路线相关</div>
+    <hr class="section-rule">
+    {% set ns = namespace(found=0) %}
+    {% for region, items in raw_data.by_region.items() %}
+      {% set region_lower = region | lower %}
+      {% for dest in user_dests %}
+        {% if DEST_REGION.get(dest) %}
+          {% for kw in DEST_REGION[dest] %}
+            {% if kw in region_lower and ns.found < 12 %}
+              {% for item in items[:3] %}
+              {% set ns.found = ns.found + 1 %}
+              <div class="radar-item radar-item-highlight">
+                <div class="radar-item-region">{{ region }}</div>
+                {% if item.link %}
+                <a href="{{ item.link }}" target="_blank" class="radar-item-title">{{ item.title }}</a>
+                {% else %}
+                <div class="radar-item-title-plain">{{ item.title }}</div>
+                {% endif %}
+                <div class="radar-item-meta">{{ item.source }}{% if item.pub %} · {{ item.pub[:10] }}{% endif %}</div>
+              </div>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {% if ns.found == 0 %}
+    <p class="empty-note">暂无与你目的地直接相关的资讯，显示全部内容。</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── 全部地区 ── #}
+  <div class="radar-section">
+    <div class="section-label">全部地区动态</div>
+    <hr class="section-rule">
+    <div class="radar-columns">
+      {% for region, items in raw_data.by_region.items() %}
+      {% if items %}
+      <div class="radar-col">
+        <div class="radar-col-header">{{ region }}</div>
+        {% for item in items[:4] %}
+        <div class="radar-item">
+          {% if item.link %}
+          <a href="{{ item.link }}" target="_blank" class="radar-item-title">{{ item.title[:90] }}{% if item.title|length > 90 %}…{% endif %}</a>
+          {% else %}
+          <div class="radar-item-title-plain">{{ item.title[:90] }}</div>
+          {% endif %}
+          <div class="radar-item-meta">{{ item.source }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  {% else %}
+  <div class="radar-empty">
+    <p>还没有抓取数据。点「立即抓取」运行一次雷达。</p>
+    <p style="margin-top:8px;font-size:12px;color:var(--ink-faint)">首次运行约 2–3 分钟。</p>
+  </div>
+  {% endif %}
+
+  {# ── 历史报告 ── #}
+  {% if reports and reports|length > 1 %}
+  <div class="radar-section" style="margin-top:40px">
+    <div class="section-label">历史记录</div>
+    <hr class="section-rule">
+    {% for r in reports %}
+    <div class="history-row">
+      <span class="history-week">{{ r.week }}</span>
+      <span class="history-date">{{ r.created_at[:10] }}</span>
+      <a href="{{ url_for('report_detail', report_id=r.id) }}" class="history-link">查看全文 →</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+.radar-page { max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }
+
+.radar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--rule);
+}
+.radar-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+.radar-meta {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-family: -apple-system, sans-serif;
+}
+
+.radar-section { margin-bottom: 36px; }
+
+/* 高亮条（你的路线） */
+.radar-item-highlight {
+  border-left: 3px solid var(--ink) !important;
+  background: var(--paper-2);
+}
+
+/* 资讯条目 */
+.radar-item {
+  padding: 10px 0 10px 12px;
+  border-left: 2px solid var(--rule-light);
+  margin-bottom: 8px;
+}
+.radar-item-region {
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-family: -apple-system, sans-serif;
+  margin-bottom: 3px;
+}
+.radar-item-title {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+  display: block;
+}
+.radar-item-title:hover { text-decoration: underline; }
+.radar-item-title-plain {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.radar-item-meta {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-family: -apple-system, sans-serif;
+  margin-top: 3px;
+}
+
+/* 双栏布局 */
+.radar-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+.radar-col-header {
+  font-family: -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+/* 历史 */
+.history-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule-light);
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+}
+.history-week { font-weight: 600; }
+.history-date { color: var(--ink-faint); font-size: 11px; }
+.history-link { margin-left: auto; font-size: 11px; color: var(--ink-muted); }
+.history-link:hover { color: var(--ink); }
+
+.run-log {
+  background: #0d0d14;
+  color: rgba(255,255,255,.7);
+  font-family: monospace;
+  font-size: 12px;
+  padding: 14px 16px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  margin-bottom: 24px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.radar-empty {
+  padding: 48px 0;
+  text-align: center;
+  font-family: -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+.empty-note {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-family: -apple-system, sans-serif;
+  padding: 8px 0;
+}
+</style>
+
+<script>
+let pollTimer = null;
+
+async function runPipeline() {
+  const btn = document.getElementById('btn-run');
+  const log = document.getElementById('run-log');
+  const status = document.getElementById('job-status');
+  btn.disabled = true;
+  log.style.display = 'block';
+  log.textContent = '启动中…\n';
+  status.textContent = '运行中…';
+
+  try {
+    const resp = await fetch('/api/run-pipeline', { method: 'POST' });
+    const data = await resp.json();
+    if (!data.ok) { log.textContent = '启动失败'; btn.disabled = false; return; }
+    pollJob(data.job_id);
+  } catch(e) {
+    log.textContent = '请求失败：' + e;
+    btn.disabled = false;
+  }
+}
+
+function pollJob(jobId) {
+  pollTimer = setInterval(async () => {
+    const resp = await fetch('/api/job/' + jobId);
+    const data = await resp.json();
+    document.getElementById('run-log').textContent = data.log || '…';
+    if (data.done) {
+      clearInterval(pollTimer);
+      document.getElementById('job-status').textContent = data.status === 'done' ? '✓ 完成' : '✗ 失败';
+      document.getElementById('btn-run').disabled = false;
+      if (data.status === 'done') setTimeout(() => location.reload(), 1200);
+    }
+  }, 2000);
+}
+</script>
+
+{% endblock %}

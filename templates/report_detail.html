@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}{{ report.week }} · 星路{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:720px">
+  <div style="margin-bottom:20px">
+    <a href="{{ url_for('radar_page') }}" style="font-size:12px;font-family:-apple-system,sans-serif;color:var(--ink-muted)">← 雷达</a>
+  </div>
+  <div class="report-meta">{{ report.week }} · {{ report.created_at[:10] }}</div>
+  <div class="report-body">{{ report.report_md | replace('\n','<br>') | safe }}</div>
+</div>
+
+<style>
+.report-meta {
+  font-family: -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.report-body {
+  font-family: -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}星路 · I have friends everywhere{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="home-hero">
+    <h1 class="hero-brand">星路</h1>
+    <p class="hero-tagline">I have friends everywhere.</p>
+    <p class="hero-desc">
+      路会关闭，路会出现。<br>
+      和走过这条路的人，一起看清前方。
+    </p>
+    {% if not user %}
+    <div class="hero-actions">
+      <a href="{{ url_for('register') }}" class="btn-primary">开始我的路线</a>
+      <a href="{{ url_for('login') }}" class="btn-text" style="margin-left:16px">已有账号 →</a>
+    </div>
+    {% else %}
+    <div class="hero-actions">
+      <a href="{{ url_for('map_page') }}" class="btn-primary">查看我的地图</a>
+      <a href="{{ url_for('radar_page') }}" class="btn-text" style="margin-left:16px">资讯雷达 →</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <hr class="section-rule-heavy" style="margin-top:48px">
+
+  <div class="route-types">
+    <div class="section-label">你在走哪条路</div>
+    <hr class="section-rule">
+    <div class="route-grid">
+      <div class="route-card">
+        <span class="route-icon">💼</span>
+        <div class="route-name">技术移民</div>
+        <div class="route-desc">NZ / AU / CA / UK 技术签证，积分制，雇主担保</div>
+      </div>
+      <div class="route-card">
+        <span class="route-icon">💻</span>
+        <div class="route-name">数字游民</div>
+        <div class="route-desc">远程工作者签证，低门槛居留，葡萄牙 D7、泰国 LTR</div>
+      </div>
+      <div class="route-card">
+        <span class="route-icon">👨‍👩‍👧</span>
+        <div class="route-name">家庭团聚</div>
+        <div class="route-desc">配偶签、父母签，依附转独立</div>
+      </div>
+      <div class="route-card">
+        <span class="route-icon">🛡️</span>
+        <div class="route-name">庇护 / 保护</div>
+        <div class="route-desc">难民申请，UNHCR 登记，紧急安置。任何人随时可能走这条路。</div>
+      </div>
+      <div class="route-card">
+        <span class="route-icon">🌱</span>
+        <div class="route-name">投资 / 退休</div>
+        <div class="route-desc">被动收入签证，黄金签证，退休居留</div>
+      </div>
+      <div class="route-card route-card-unknown">
+        <span class="route-icon">🔭</span>
+        <div class="route-name">还不确定</div>
+        <div class="route-desc">先看看有哪些路，再决定走哪条</div>
+      </div>
+    </div>
+  </div>
+
+  {% if latest %}
+  <div style="margin-top:48px">
+    <div class="section-label">最新雷达</div>
+    <hr class="section-rule">
+    <div class="latest-radar-row">
+      <span class="latest-week">{{ latest.week }}</span>
+      <span class="latest-meta">{{ latest.created_at[:10] }} 更新</span>
+      {% if user %}
+      <a href="{{ url_for('radar_page') }}" style="margin-left:auto;font-size:12px;font-family:-apple-system,sans-serif;color:var(--ink-muted)">查看报告 →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}设置路线 · 星路{% endblock %}
+{% block content %}
+<div class="page-container" style="max-width:560px">
+
+  <div class="auth-title" style="margin-bottom:6px">你的起点</div>
+  <div class="auth-sub">这决定了你的地图长什么样。你可以随时修改。</div>
+
+  <form method="post" style="margin-top:28px">
+
+    <div class="form-group">
+      <label class="form-label">你的护照国籍</label>
+      <input type="text" name="passport" class="form-input"
+             placeholder="如：中国、美国、叙利亚、无国籍…" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">现在在哪里</label>
+      <input type="text" name="current_country" class="form-input"
+             placeholder="当前居住的国家" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">当前身份 / 签证状态</label>
+      <select name="current_visa" class="form-input">
+        <option value="">选择…</option>
+        <option value="citizen">公民 / 永居</option>
+        <option value="work">工签</option>
+        <option value="student">学签</option>
+        <option value="tourist">旅游签 / 短期</option>
+        <option value="family">家属签</option>
+        <option value="asylum">庇护申请中</option>
+        <option value="undocumented">无合法身份</option>
+        <option value="other">其他</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">想去哪里（可多选）</label>
+      <div class="checkbox-grid">
+        {% for dest in [
+          ('nz','🇳🇿 新西兰'),('au','🇦🇺 澳大利亚'),('ca','🇨🇦 加拿大'),
+          ('uk','🇬🇧 英国'),('us','🇺🇸 美国'),('pt','🇵🇹 葡萄牙'),
+          ('de','🇩🇪 德国'),('jp','🇯🇵 日本'),('th','🇹🇭 泰国'),
+          ('ae','🇦🇪 阿联酋'),('other','其他'),('unknown','还不确定')
+        ] %}
+        <label class="checkbox-item">
+          <input type="checkbox" name="destinations" value="{{ dest[0] }}">
+          <span>{{ dest[1] }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">路线类型</label>
+      <select name="route_type" class="form-input">
+        <option value="unknown">还不确定</option>
+        <option value="skilled">技术移民 / 工签</option>
+        <option value="nomad">数字游民</option>
+        <option value="family">家庭团聚</option>
+        <option value="asylum">庇护 / 保护</option>
+        <option value="investment">投资 / 退休</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn-primary" style="width:100%;margin-top:8px">
+      生成我的地图 →
+    </button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>星路 Admin</title>
+<style>
+  body { background:#0a0a12; color:#e8e2d6; font-family:monospace; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+  .box { width:300px; }
+  h2 { font-size:14px; color:rgba(255,255,255,.4); margin-bottom:20px; font-weight:400; }
+  input { width:100%; padding:10px; background:#111; border:1px solid #333; color:#e8e2d6; font-family:monospace; font-size:14px; box-sizing:border-box; margin-bottom:12px; }
+  button { width:100%; padding:10px; background:#b8960c; color:#0a0a12; border:none; font-family:monospace; font-size:14px; cursor:pointer; font-weight:700; }
+  .err { color:#ff6b6b; font-size:12px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>星路 · 维护面板</h2>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="password" name="password" placeholder="管理员密码" autofocus>
+    <button type="submit">进入</button>
+  </form>
+</div>
+</body>
+</html>
